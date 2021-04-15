@@ -11,6 +11,9 @@
 #include "xdp_prog.h"
 #include "xdp_worker.h"
 
+#define xdp_runtime_likely(x) __builtin_expect(!!(x), 1)
+#define xdp_runtime_unlikely(x) __builtin_expect(!!(x), 0)
+
 #define XDP_PACKET_POLICY_DROP XDP_DROP
 #define XDP_PACKET_POLICY_KERNEL XDP_PASS
 #define XDP_PACKET_POLICY_DIRECT XDP_REDIRECT
