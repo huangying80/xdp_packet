@@ -14,6 +14,9 @@
 
 #define XDP_PAGESIZE 4096
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 enum {
     XPD_HUGEPAGE_OPS = 0,
     XDP_DEFAULT_OPS,
@@ -41,4 +44,7 @@ struct xdp_mempool *xdp_mempool_create(int numa_node, size_t size);
 void xdp_mempool_release(struct xdp_mempool *pool);
 void *xdp_mempool_alloc(struct xdp_mempool *pool, size_t size, size_t align);
 void *xdp_mempool_calloc(struct xdp_mempool *pool, size_t size, size_t align);
+#ifdef __cplusplus
+} 
+#endif
 #endif

@@ -7,6 +7,9 @@
 
 #define XDP_ETH_MAC_ADDR_LEN (6)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 struct xdp_iface {
     char ifname[IF_NAMESIZE];
     int  ifindex;
@@ -17,4 +20,7 @@ int xdp_eth_get_queue(const char *ifname, int *max_queue, int *curr_queue);
 int xdp_eth_set_queue(const char *ifname, int queue);
 int xdp_eth_get_info(const char *ifname, struct xdp_iface *iface);
 int xdp_eth_numa_node(const char *ifname);
+#ifdef __cplusplus
+} 
+#endif
 #endif

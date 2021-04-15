@@ -5,6 +5,9 @@
 #define _XDP_WORKER_H_
 #define XDP_MAX_WORKER (128)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 #define XDP_WORKER_FOREACH(i)        \
 for (i = xdp_worker_get_next(-1); i < XDP_MAX_WORKER; i = xdp_worker_get_next(i))
 
@@ -21,4 +24,7 @@ short xdp_worker_get_next(short i);
 unsigned short xdp_workers_enable_by_numa(int numa_node, unsigned short count);
 unsigned short xdp_workers_enable(unsigned short count);
 void xdp_workers_run(void);
+#ifdef __cplusplus
+} 
+#endif
 #endif

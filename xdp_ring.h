@@ -20,6 +20,9 @@
 #define xdp_ring_likely(x) __builtin_expect(!!(x), 1)
 #define xdp_ring_unlikely(x) __builtin_expect(!!(x), 0)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 struct xdp_headtail {
     volatile uint32_t head;
     volatile uint32_t tail;
@@ -330,4 +333,7 @@ xdp_ring_get_capacity(const struct xdp_ring *r)
     return r->capacity;
 }
 
+#ifdef __cplusplus
+} 
+#endif
 #endif

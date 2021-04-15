@@ -16,6 +16,12 @@
 #define XDP_HUGEPAGE_HOME "/mnt"
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern struct xdp_mempool_ops hugepage_mempool_ops;
 struct xdp_mempool_ops *xdp_hugepage_get_ops(void);
+#ifdef __cplusplus
+} 
+#endif
 #endif

@@ -6,6 +6,9 @@
 #include "xdp_ring.h"
 #include "xdp_mempool.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 struct xdp_frame {
     off_t    data_off;
     size_t   data_len;
@@ -33,4 +36,7 @@ unsigned int xdp_framepool_put_frame(struct xdp_framepool *fp,
     struct xdp_frame **frame_list, size_t count);
 void xdp_framepool_free_frame(struct xdp_framepool *fp,
     struct xdp_frame *frame);
+#ifdef __cplusplus
+} 
+#endif
 #endif

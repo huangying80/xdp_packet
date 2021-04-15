@@ -10,6 +10,9 @@
 #include "xdp_dev.h"
 #include "xdp_framepool.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 struct xdp_rx_queue;
 struct xdp_tx_queue {
     struct xsk_ring_prod     tx;
@@ -34,4 +37,7 @@ int xdp_sock_rx_zc(struct xdp_rx_queue *rxq, struct xdp_frame **bufs,
     uint16_t buf_len);
 int xdp_sock_tx_zc(struct xdp_tx_queue *txq, struct xdp_frame **bufs,
     uint16_t buf_len);
+#ifdef __cplusplus
+} 
+#endif
 #endif

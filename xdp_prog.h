@@ -8,6 +8,9 @@
 
 #include "xdp_eth.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 int xdp_prog_init(const char *ifname, const char *prog, const char *section);
 void xdp_prog_release(void);
 
@@ -16,4 +19,7 @@ int xdp_prog_update_l4(uint8_t l4_proto, uint32_t action);
 int xdp_prog_update_tcpport(uint16_t port, uint32_t action);
 int xdp_prog_update_udpport(uint16_t port, uint32_t action);
 
+#ifdef __cplusplus
+} 
+#endif
 #endif

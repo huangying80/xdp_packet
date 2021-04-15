@@ -19,6 +19,9 @@
 #define XDP_PACKET_POLICY_DIRECT XDP_REDIRECT
 #define XDP_PACKET_POLICY_FOWARD XDP_TX
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 struct xdp_runtime {
     uint32_t     fill_size;
     uint32_t     comp_size;
@@ -60,4 +63,7 @@ int xdp_runtime_l3_drop(uint16_t l3_protocal);
 int xdp_runtime_l4_packet(uint16_t l4_protocal);
 int xdp_runtime_l4_drop(uint16_t l4_protocal);
  
+#ifdef __cplusplus
+} 
+#endif
 #endif

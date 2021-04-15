@@ -7,6 +7,10 @@
 #include "xdp_eth.h"
 #include "xdp_framepool.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct xdp_dev_info {
     int max_queues;
     int curr_queue;
@@ -40,5 +44,9 @@ struct xdp_umem_info_pool *
 xdp_dev_umem_info_pool_create(struct xdp_mempool *pool, uint32_t n);
 struct xdp_umem_info *xdp_dev_umem_info_calloc(
     struct xdp_umem_info_pool *umem_pool, size_t n);
+
+#ifdef __cplusplus
+} 
+#endif
 
 #endif
