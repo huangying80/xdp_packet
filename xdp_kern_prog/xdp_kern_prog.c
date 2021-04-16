@@ -1,4 +1,6 @@
 #include <linux/if_ether.h>
+#include <linux/ip.h>
+#include <linux/ipv6.h>
 #include <linux/udp.h>
 #include <linux/tcp.h>
 #include <linux/in.h>
@@ -57,13 +59,13 @@ MAP_DEFINE(xsks_map) = {
     MAX_ETH_QUEUE_MAX
 };
 
+
 MAP_DEFINE(layer3) = MAP_INIT (
     BPF_MAP_TYPE_PERCPU_HASH,
     sizeof(__u32),
     sizeof(__u32),
     MAX_LAYER3_NUM
 );
-
 XDP_ACTION_DEFINE(layer3)
 {
     __u32            key;
@@ -86,13 +88,97 @@ XDP_ACTION_DEFINE(layer3)
     return *action;
 }
 
+
+union ipv4_key {
+    __u32 b32[2];
+    __u8  b8[8];
+};
+MAP_DEFINE(ipv4) = MAP_INIT_NO_PREALLOC ( 
+    BPF_MAP_TYPE_LPM_TRIE,
+    8,
+    sizeof(__u32),
+    MAX_LPM_IPV4_NUM
+);
+XDP_ACTION_DEFINE(ipv4)
+{
+    int           hdrsize;
+    __u32        *action;
+    __be32        src_ip = 0;
+    struct iphdr *iph = cur->pos;
+    union  ipv4_key key;
+
+    if (iph + 1 > (struct iphdr *)data_end) {
+        pdebug("ipv4 xdp aborted\n");
+        return XDP_ABORTED;
+    }
+
+    hdrsize = iph->ihl * 4;
+    if(hdrsize < sizeof(struct iphdr)) {
+        pdebug("ipv4 xdp aborted\n");
+        return XDP_ABORTED;
+    }
+
+    if (cur->pos + hdrsize > data_end) {
+        pdebug("ipv4 xdp aborted\n");
+        return XDP_ABORTED;
+    }
+    cur->pos += hdrsize;
+    cur->l4_proto = iph->protocol;
+    src_ip = iph->saddr;
+    key.b32[0] = 32;
+    key.b8[4] = src_ip & 0xff;
+    key.b8[5] = (src_ip >> 8) & 0xff;
+    key.b8[6] = (src_ip >> 16) & 0xff;
+    key.b8[7] = (src_ip >> 24) & 0xff;
+    action = bpf_map_lookup_elem(MAP_REF(ipv4), &key);
+    if (!action) {
+        pdebug("ipv4 xdp pass\n");
+        return XDP_PASS;
+    }
+
+    return *action;
+}
+
+MAP_DEFINE(ipv6) = MAP_INIT_NO_PREALLOC (
+    BPF_MAP_TYPE_LPM_TRIE,
+    20,
+    sizeof(__u32),
+    MAX_LPM_IPV6_NUM
+);
+XDP_ACTION_DEFINE(ipv6)
+{
+    struct ipv6hdr *ip6h = cur->pos;
+    __u32          *action;
+
+    if (ip6h + 1 > (struct ipv6hdr*)data_end) {
+        pdebug("ipv6 xdp aborted\n");
+        return XDP_ABORTED;
+    }
+    cur->pos = ip6h + 1;
+    cur->l4_proto = ip6h->nexthdr;
+    struct {
+        __u32 prefixlen;
+        struct in6_addr ipv6_addr;
+    }key6 = {
+        .prefixlen = 128,
+        .ipv6_addr = ip6h->saddr
+    };
+    action = bpf_map_lookup_elem(MAP_REF(ipv6), &key6);
+    if (!action) {
+        pdebug("ipv6 xdp pass\n");
+        return XDP_PASS;
+    }
+
+    return *action;
+}
+
+
 MAP_DEFINE(layer4) = MAP_INIT (
     BPF_MAP_TYPE_PERCPU_HASH,
     sizeof(__u32),
     sizeof(__u32),
     MAX_LAYER4_NUM
 );
-
 XDP_ACTION_DEFINE(layer4) //check tcp or udp
 {
     __u32    key;
@@ -106,13 +192,13 @@ XDP_ACTION_DEFINE(layer4) //check tcp or udp
     return *action;
 }
 
+
 MAP_DEFINE(tcp_port) = MAP_INIT (
     BPF_MAP_TYPE_PERCPU_HASH,
     sizeof(__u32),
     sizeof(__u32),
     MAX_PORT_NUM
 );
-
 XDP_ACTION_DEFINE(tcp_port)
 {
     int       len;
@@ -144,13 +230,13 @@ XDP_ACTION_DEFINE(tcp_port)
     return *action;
 }
 
+
 MAP_DEFINE(udp_port) = MAP_INIT (
     BPF_MAP_TYPE_PERCPU_HASH,
     sizeof(__u32),
     sizeof(__u32),
     MAX_PORT_NUM
 );
-
 XDP_ACTION_DEFINE(udp_port)
 {
     __u32   *action;
@@ -200,6 +286,30 @@ int xdp_sock_main(struct xdp_md *ctx)
         value = bpf_map_lookup_elem(MAP_REF(xsks_map), &index);
         if (!value) {
             perror("oops, no queue matched for %d in layer3", cur->l3_proto);
+            return XDP_ABORTED;
+        }
+        return bpf_redirect_map(MAP_REF(xsks_map), index, 0);
+    }
+    if (action != XDP_PASS) {
+        goto out;
+    }
+
+    switch(cur->l3_proto) {
+        case ETH_P_IP:
+            action = CALL_ACTION(ipv4);
+            break;
+        case ETH_P_IPV6:
+            action = CALL_ACTION(ipv6);
+            break;
+        default:
+            action = XDP_PASS;
+            break;
+    }
+    if (action == XDP_REDIRECT) {
+        index = ctx->rx_queue_index;
+        value = bpf_map_lookup_elem(MAP_REF(xsks_map), &index);
+        if (!value) {
+            perror("oops, no queue matched for %d", cur->l3_proto);
             return XDP_ABORTED;
         }
         return bpf_redirect_map(MAP_REF(xsks_map), index, 0);

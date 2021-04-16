@@ -15,6 +15,11 @@ struct xdp_frame {
     void    *addr;
 };
 
+#define xdp_frame_get_addr_offset(p, t, o) \
+    ((t)((p)->addr + (p)->data_off + (o)))
+#define xdp_frame_get_addr(p, t) \
+    xdp_frame_get_addr_offset(p, t, 0)
+
 struct xdp_framepool {
     uint32_t            frame_size;
     uint32_t            frame_headroom;

@@ -34,4 +34,12 @@
     .map_flags = BPF_F_NO_PREALLOC    \
 }
 
+#ifndef MAX_LPM_IPV4_NUM
+#define MAX_LPM_IPV4_NUM (1024)
+#endif
+
+#ifndef MAX_LPM_IPV6_NUM
+#define MAX_LPM_IPV6_NUM (1024)
+#endif
+
 #endif
