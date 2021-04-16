@@ -9,24 +9,27 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define xdp_frame_get_addr_offset(p, t, o) \
+    ((t)(((uint8_t *)(p)->addr) + (p)->data_off + (o)))
+#define xdp_frame_get_addr(p, t) \
+    xdp_frame_get_addr_offset(p, t, 0)
+
+struct xdp_framepool;
 struct xdp_frame {
+    struct xdp_framepool *fpool;
     off_t    data_off;
     size_t   data_len;
     void    *addr;
 };
-
-#define xdp_frame_get_addr_offset(p, t, o) \
-    ((t)((p)->addr + (p)->data_off + (o)))
-#define xdp_frame_get_addr(p, t) \
-    xdp_frame_get_addr_offset(p, t, 0)
 
 struct xdp_framepool {
     uint32_t            frame_size;
     uint32_t            frame_headroom;
     struct xdp_ring    *ring;
     void               *base_addr;
-    struct xdp_frame    frame[0];
     size_t              count;
+    struct xdp_frame    frame[0];
 };
 
 struct xdp_frame *xdp_framepool_addr_to_frame(
@@ -39,8 +42,7 @@ unsigned int xdp_framepool_get_frame(struct xdp_framepool *fp,
     struct xdp_frame **frame_list, size_t count);
 unsigned int xdp_framepool_put_frame(struct xdp_framepool *fp,
     struct xdp_frame **frame_list, size_t count);
-void xdp_framepool_free_frame(struct xdp_framepool *fp,
-    struct xdp_frame *frame);
+void xdp_framepool_free_frame(struct xdp_frame *frame);
 #ifdef __cplusplus
 } 
 #endif
