@@ -11,3 +11,8 @@ huangying, email: hy_gzr@163.com
 #### 修改历史：
 * 2021-04-15:<br>
   * Compiles complete, but without any debugging
+* 2021-04-16:<br>
+  * 新加文件xdp_prefetch.h,在这个文件中定义了cpu预取的接口
+  * 新加文件xdp_endian.h,在这个文件中定义了字节序转换的接口
+  * 修改了ebpf程序中的bug,这个bug会造成无法获取4层协议的问题
+  * 增加了对ipv6的支持  
