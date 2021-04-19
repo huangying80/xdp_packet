@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <linux/ip.h>
 
-#include "xdp_endian.h"
+#include "xdp_net.h"
 
 #ifdef __cplusplsu
 extern "C" {
