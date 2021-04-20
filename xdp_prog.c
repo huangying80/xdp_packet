@@ -143,7 +143,7 @@ out:
     return ret;
 }
 
-void xpd_prog_release(void)
+void xdp_prog_release(void)
 {
     if (xdp_unload_prog(&xdp_rt.cfg) < 0) {
         DEBUG_OUT("xdp_unload_prog failed");

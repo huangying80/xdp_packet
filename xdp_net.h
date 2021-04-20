@@ -125,6 +125,7 @@ xdp_ipv4_udptcp_checksum(const struct iphdr *iphdr, const void *l4_hdr)
 {
     uint32_t cksum;
     uint32_t l4_len;
+    uint32_t l3_len;
 
     l3_len = xdp_ntohs(iphdr->tot_len);
     if (l3_len < sizeof(struct iphdr))
@@ -156,14 +157,14 @@ xdp_ipv6_phdr_checksum(const struct ipv6hdr *ipv6_hdr)
 {
     uint32_t sum;
     struct {
-        rte_be32_t len;
-        rte_be32_t proto;
+        uint32_t len;
+        uint32_t proto;
     } psd_hdr;
 
     psd_hdr.proto = (uint32_t)(ipv6_hdr->nexthdr << 24);
     psd_hdr.len = ipv6_hdr->payload_len;
 
-    sum = __xdp_raw_checksum(ipv6_hdr->saddr, sizeof(ipv6_hdr->saddr)
+    sum = __xdp_raw_checksum(&ipv6_hdr->saddr, sizeof(ipv6_hdr->saddr)
         + sizeof(ipv6_hdr->daddr), 0);
     sum = __xdp_raw_checksum(&psd_hdr, sizeof(psd_hdr), sum);
     return xdp_raw_checksum_reduce(sum);

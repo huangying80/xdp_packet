@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include "process.h"
 #include "xdp_runtime.h"
 
 int main(int argc, char *argv[])
@@ -29,7 +31,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "xdp_runtime_setup_queue failed with %s\n", eth);
         goto out;
     }
-    ret = xdp_runtime_setup_workers(&runtime, Process::worker, 0);
+    ret = xdp_runtime_setup_workers(&runtime, DnsProcess::worker, 0);
     if (ret < 0) {
         fprintf(stderr, "xdp_runtime_setup_workers failed with %s\n", eth);
         goto out;

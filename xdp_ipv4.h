@@ -24,7 +24,7 @@ static inline int xdp_ipv4_check_len(uint16_t hdr_len,
 
 static inline uint16_t xdp_ipv4_get_hdr_len(struct iphdr *hdr)
 {
-    return iph->ihl << 2;
+    return hdr->ihl << 2;
 }
 static inline uint16_t xdp_ipv4_get_total_len(struct iphdr *hdr)
 {

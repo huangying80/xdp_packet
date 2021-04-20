@@ -8,7 +8,9 @@
 #include "xdp_dev.h"
 #include "xdp_runtime.h"
 #include "xdp_sock.h"
+#include "xdp_prog.h"
 #include "xdp_log.h"
+
 
 #ifndef XDP_RUNTIME_FILL_SIZE
 #define XDP_RUNTIME_FILL_SIZE 4096

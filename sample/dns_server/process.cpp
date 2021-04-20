@@ -1,15 +1,27 @@
+#include <linux/if_ether.h>
+#include <linux/ip.h>
+#include <linux/udp.h>
+
+#include "xdp_runtime.h"
+#include "xdp_dev.h"
+#include "xdp_net.h"
+#include "xdp_prefetch.h"
+#include "xdp_framepool.h"
+#include "xdp_ipv4.h"
+
 #include "process.h"
 #include "packet.h"
+
 
 #define DNS_HEAD_SIZE 12
 
 #define CHECK_DNS_LEN(l, dl, ql) \
 xdp_runtime_unlikely((l) != ((dl) + sizeof(struct iphdr)) || (ql) < DNS_HEAD_SIZE)
 
-volatile bool Process::running = true;
-struct Channel Process::channelList[MAX_QUEUE];
+volatile bool DnsProcess::running = true;
+struct Channel DnsProcess::channelList[MAX_QUEUE];
 
-int Process::processIpv4(struct xdp_frame *frame, struct Channel *chn)
+int DnsProcess::processIpv4(struct xdp_frame *frame, struct Channel *chn)
 {
     struct ethhdr *ethhdr;
     struct iphdr  *iphdr;
@@ -20,14 +32,17 @@ int Process::processIpv4(struct xdp_frame *frame, struct Channel *chn)
     uint16_t       ipv4TotalLen;
     uint16_t       l3PayloadLen;
     uint16_t       udpLen;
+    uint16_t       dnsLen;
+    uint32_t       packetLen;
+    Packet         packet;
 
 
-    ethhdr = xdp_frame_get_addr(frame, struct ethhdr);
-    iphdr = ethhdr + 1;
-    udphdr = iphdr + 1;
+    ethhdr = xdp_frame_get_addr(frame, struct ethhdr *);
+    iphdr = (struct iphdr *)(ethhdr + 1);
+    udphdr = (struct udphdr *)(iphdr + 1);
 
     ipv4HdrLen = xdp_ipv4_get_hdr_len(iphdr);
-    ipvTtotalLen = xdp_ipv4_get_total_len(iphdr);
+    ipv4TotalLen = xdp_ipv4_get_total_len(iphdr);
     if (!xdp_ipv4_check_len(ipv4HdrLen, ipv4TotalLen, frame)) {
         xdp_framepool_free_frame(frame);
         return 0;
@@ -40,7 +55,7 @@ int Process::processIpv4(struct xdp_frame *frame, struct Channel *chn)
         return 0;
     }
         
-    dns = udphdr + 1;
+    dns = (uint8_t *)(udphdr + 1);
     packet.parse(dns);
     packet.setDomainIpGroup("127.0.0.2");
     packetLen = packet.pack((char *)dns);
@@ -65,21 +80,22 @@ int Process::processIpv4(struct xdp_frame *frame, struct Channel *chn)
     return 0;
 }
 
-void Process::swapPort(uint16_t &src, uint16_t &dst)
+void DnsProcess::swapPort(uint16_t &src, uint16_t &dst)
 {
     src ^= dst;
     dst ^= src;
     src ^= dst;
 }
 
-void Process:swapIp(uint32_t &src, uint32_t &dst)
+void DnsProcess::swapIp(uint32_t &src, uint32_t &dst)
 {
     src ^= dst;
     dst ^= src;
     src ^= dst;
 }
 
-void Process::swapMac(char src[ETH_ALEN], char dst[ETH_ALEN])
+void DnsProcess::swapMac(unsigned char src[ETH_ALEN],
+    unsigned char dst[ETH_ALEN])
 {
     for (int i = 0; i < ETH_ALEN; i++) {
         src[i] ^= dst[i];
@@ -88,7 +104,7 @@ void Process::swapMac(char src[ETH_ALEN], char dst[ETH_ALEN])
     }
 }
 
-int Process:worker(volatile void *args)
+int DnsProcess::worker(volatile void *args)
 {
     uint16_t     qIdx;
     int          rcvd;
@@ -103,10 +119,10 @@ int Process:worker(volatile void *args)
     while (running) {
         rcvd = xdp_dev_read(qIdx, frame, 32);
         for (i = 0; i < 3 && i < rcvd; i++) {
-            xdp_prefetch0(xdp_frame_get_addr(frame, void *));
+            xdp_prefetch0(xdp_frame_get_addr(frame[i], void *));
         }
         for (i = 0; i < rcvd - 3; i++) {
-            xdp_prefetch0(xdp_frame_get_addr(frame, void *));
+            xdp_prefetch0(xdp_frame_get_addr(frame[i], void *));
             processIpv4(frame[i], chn);
         }
         for (; i < rcvd; i++) {
@@ -115,7 +131,7 @@ int Process:worker(volatile void *args)
 
         if (xdp_runtime_likely(chn->sendCount > 0)) {
             sent = xdp_dev_write(qIdx, chn->send_bufs, chn->sendCount);
-            if (xdp_runtime_unlikey(sent != chn->sendCount) {
+            if (xdp_runtime_unlikely(sent != chn->sendCount)) {
                 for (i = sent; i < chn->sendCount; i++) {
                     xdp_framepool_free_frame(chn->send_bufs[i]);
                 }
