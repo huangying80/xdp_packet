@@ -51,8 +51,6 @@ static uint8_t xdp_workers_set[XDP_MAX_WORKER];
 
 static unsigned short xdp_worker_count = 0;
 
-static int xdp_worker_start_by_id(unsigned short worker_id,
-    xdp_worker_func_t func, void *arg);
 static int xdp_worker_wait_by_id(unsigned short worker_id);
 
 static void *xdp_worker_loop(__attribute__((unused)) void *arg);
@@ -195,8 +193,7 @@ int xdp_worker_start(xdp_worker_func_t func, void *arg)
     return 0;
 }
 
-static int
-xdp_worker_start_by_id(unsigned short worker_id,
+int xdp_worker_start_by_id(unsigned short worker_id,
     xdp_worker_func_t func, void *arg)
 {
     int notify_out;

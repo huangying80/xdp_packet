@@ -18,6 +18,8 @@ typedef int (*xdp_worker_func_t) (volatile void *);
 void xdp_workers_init(void);
 void xdp_workers_stop(void);
 int xdp_worker_start(xdp_worker_func_t func, void *arg);
+int xdp_worker_start_by_id(unsigned short worker_id,
+    xdp_worker_func_t func, void *arg);
 void xdp_workers_wait(void);
 unsigned xdp_worker_get_numa_node(unsigned short worker_id);
 short xdp_worker_get_next(short i);

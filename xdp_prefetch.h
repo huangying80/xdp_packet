@@ -14,40 +14,40 @@ extern "C" {
 #endif
 
 #ifdef _mm_prefetch
-static inline void xdp_prefetch0(const volatile void *p)
+static inline void xdp_prefetch0(const void *p)
 {
     _mm_prefetch(p, _MM_HINT_T0);
 }
 
-static inline void xdp_prefetch1(const volatile void *p)
+static inline void xdp_prefetch1(const void *p)
 {
     _mm_prefetch(p, _MM_HINT_T1);
 }
-static inline void xdp_prefetch2(const volatile void *p)
+static inline void xdp_prefetch2(const void *p)
 {
     _mm_prefetch(p, _MM_HINT_T2);
 }
-static inline void xdp_prefetch_nta(const volatile void *p)
+static inline void xdp_prefetch_nta(const void *p)
 {
     _mm_prefetch(p, _MM_HINT_NTA);
 }
 #else
-static inline void xdp_prefetch0(const volatile void *p)
+static inline void xdp_prefetch0(const void *p)
 {
 	asm volatile ("prefetcht0 %[p]" : : [p] "m" (*(const volatile char *)p));
 }
 
-static inline void xdp_prefetch1(const volatile void *p)
+static inline void xdp_prefetch1(const void *p)
 {
 	asm volatile ("prefetcht1 %[p]" : : [p] "m" (*(const volatile char *)p));
 }
 
-static inline void xdp_prefetch2(const volatile void *p)
+static inline void xdp_prefetch2(const void *p)
 {
 	asm volatile ("prefetcht2 %[p]" : : [p] "m" (*(const volatile char *)p));
 }
 
-static inline void xdp_prefetch_nta(const volatile void *p)
+static inline void xdp_prefetch_nta(const void *p)
 {
 	asm volatile ("prefetchnta %[p]" : : [p] "m" (*(const volatile char *)p));
 }

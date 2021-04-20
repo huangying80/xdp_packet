@@ -231,7 +231,7 @@ static void xdp_sock_pull_umem_cq(struct xdp_umem_info *umem, uint32_t size)
         addr = xsk_umem__extract_addr(addr);
         frame = xdp_framepool_addr_to_frame(umem->framepool,
             xsk_umem__get_data(umem->buffer, addr));
-        xdp_framepool_free_frame(umem->framepool, frame);
+        xdp_framepool_free_frame(frame);
     }
 
     xsk_ring_cons__release(cq, n);
