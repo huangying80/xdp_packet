@@ -1,6 +1,9 @@
 /*
  * huangying email: hy_gzr@163.com
  */
+#include <linux/ip.h>
+#include <linux/ipv6.h>
+
 #include "xdp_numa.h"
 #include "xdp_dev.h"
 #include "xdp_runtime.h"
@@ -144,6 +147,7 @@ out:
 
 int
 xdp_runtime_setup_workers(struct xdp_runtime *runtime,
+    xdp_worker_func_t worker_func,
     unsigned short worker_count)
 {
     int            ret = -1;
@@ -175,6 +179,7 @@ xdp_runtime_setup_workers(struct xdp_runtime *runtime,
     }
 
     runtime->workers = worker_count;
+    runtime->worker_func = worker_func;
     xdp_workers_run();
     ret = 0;
 
@@ -182,6 +187,24 @@ out:
     return ret;
 }
 
+int xdp_runtime_startup_workers(struct xdp_runtime *runtime)
+{
+    int      ret;
+    uint16_t qIdx = 0;
+    uint16_t worker_id = 0;
+
+    XDP_WORKER_FOREACH(worker_id) {
+        ret = xdp_worker_start_by_id(worker_id, runtime->worker_func, &qIdx);
+        if (ret < 0) {
+            return -1;
+        }
+        if (++qIdx >= runtime->queue_count) {
+            break;
+        }
+
+    }
+    return 0;
+}
 
 void xdp_runtime_release(struct xdp_runtime *runtime)
 {
@@ -230,3 +253,54 @@ inline int xdp_runtime_l4_drop(uint16_t l4_protocal)
     return xdp_prog_update_l4(l4_protocal, XDP_PACKET_POLICY_DROP);        
 }
 
+inline int xdp_runtime_ipv4_packet(const char *ip, uint32_t prefix, int type)
+{
+    struct in_addr addr;
+    int  ret;
+    ret = inet_pton(AF_INET, ip, &addr);
+    if (ret != 1) {
+        ERR_OUT("xdp_runtime_ipv4_packet failed %s/%u", ip, prefix);
+        return -1;
+    }
+
+    return xdp_prog_update_ipv4(&addr, prefix, type, XDP_PACKET_POLICY_DIRECT);
+}
+
+inline int xdp_runtime_ipv4_drop(const char *ip, uint32_t prefix, int type)
+{
+    struct in_addr addr;
+    int  ret;
+    ret = inet_pton(AF_INET, ip, &addr);
+    if (ret != 1) {
+        ERR_OUT("xdp_runtime_ipv4_drop failed %s/%u", ip, prefix);
+        return -1;
+    }
+
+    return xdp_prog_update_ipv4(&addr, prefix, type, XDP_PACKET_POLICY_DROP);
+}
+
+inline int xdp_runtime_ipv6_packet(const char *ip, uint32_t prefix, int type)
+{
+    struct in6_addr addr;
+    int  ret;
+    ret = inet_pton(AF_INET6, ip, &addr);
+    if (ret != 1) {
+        ERR_OUT("xdp_runtime_ipv6_packet failed %s/%u", ip, prefix);
+        return -1;
+    }
+
+    return xdp_prog_update_ipv6(&addr, prefix, type, XDP_PACKET_POLICY_DIRECT);
+}
+
+inline int xdp_runtime_ipv6_drop(const char *ip, uint32_t prefix, int type)
+{
+    struct in6_addr addr;
+    int  ret;
+    ret = inet_pton(AF_INET6, ip, &addr);
+    if (ret != 1) {
+        ERR_OUT("xdp_runtime_ipv6_drop failed %s/%u", ip, prefix);
+        return -1;
+    }
+
+    return xdp_prog_update_ipv6(&addr, prefix, type, XDP_PACKET_POLICY_DROP);
+}

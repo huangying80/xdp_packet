@@ -25,6 +25,10 @@
 
 enum {
     L3_MAP_FD = 0,
+    IPV4_SRC_MAP_FD,
+    IPV6_SRC_MAP_FD,
+    IPV4_DST_MAP_FD,
+    IPV6_DST_MAP_FD,
     L4_MAP_FD,
     TCPPORT_MAP_FD,
     UDPPORT_MAP_FD,
@@ -94,6 +98,18 @@ int xdp_prog_init(const char *ifname, const char *prog, const char *section)
     }
     xdp_rt.map_fd[L3_MAP_FD] = fd;
     
+    fd = xdp_find_map(bpf_obj, textify(MAP_NAME(ipv4_src)));
+    if (fd < 0) {
+        goto out;
+    }
+    xdp_rt.map_fd[IPV4_SRC_MAP_FD] = fd;
+
+    fd = xdp_find_map(bpf_obj, textify(MAP_NAME(ipv6_src)));
+    if (fd < 0) {
+        goto out;
+    }
+    xdp_rt.map_fd[IPV6_SRC_MAP_FD] = fd;
+
     fd = xdp_find_map(bpf_obj, textify(MAP_NAME(layer4)));
     if (fd < 0) {
         goto out;
@@ -148,6 +164,58 @@ inline int xdp_prog_update_l3(uint16_t l3_proto, uint32_t action)
     __u32 key = (__u32)bpf_htons(l3_proto);
     __u32 val = (__u32)action;
     return xdp_update_map(xdp_rt.map_fd[L3_MAP_FD], key, val);
+}
+
+inline int
+xdp_prog_update_ipv4(struct in_addr *addr, uint32_t prefix,
+    int type, uint32_t action)
+{
+    struct bpf_lpm_trie_key *key;
+    uint32_t                 size;
+    __u32                    val;
+    int                      map_fd;
+
+    if (type == XDP_UPDATE_IP_SRC) {
+        map_fd = xdp_rt.map_fd[IPV4_SRC_MAP_FD];
+    } else {
+        map_fd = xdp_rt.map_fd[IPV4_DST_MAP_FD];
+    }
+    size = sizeof(struct in_addr);
+    key = alloca(sizeof(struct bpf_lpm_trie_key) + size);
+    key->prefixlen = prefix;
+    memcpy(key->data, addr, size);
+    val = (__u32)action;
+    if (bpf_map_update_elem(map_fd, key, &val, BPF_ANY) < 0) {
+        ERR_OUT("update ipv4 map failed, errno %d", errno);
+        return -1;
+    }
+    return 0;
+}
+
+inline int
+xdp_prog_update_ipv6(struct in6_addr *addr, uint32_t prefix,
+    int type, uint32_t action)
+{
+    struct bpf_lpm_trie_key *key;
+    uint32_t                 size;
+    __u32                    val;
+    int                      map_fd;
+
+    if (type == XDP_UPDATE_IP_SRC) {
+        map_fd = xdp_rt.map_fd[IPV6_SRC_MAP_FD];
+    } else {
+        map_fd = xdp_rt.map_fd[IPV6_DST_MAP_FD];
+    }
+    size = sizeof(struct in6_addr);
+    key = alloca(sizeof(struct bpf_lpm_trie_key) + size);
+    key->prefixlen = prefix;
+    memcpy(key->data, addr, size);
+    val = (__u32)action;
+    if (bpf_map_update_elem(map_fd, key, &val, BPF_ANY) < 0) {
+        ERR_OUT("update ipv6 src map failed, errno %d", errno);
+        return -1;
+    }
+    return 0;
 }
 
 inline int xdp_prog_update_l4(uint8_t l4_proto, uint32_t action)

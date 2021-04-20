@@ -93,13 +93,13 @@ union ipv4_key {
     __u32 b32[2];
     __u8  b8[8];
 };
-MAP_DEFINE(ipv4) = MAP_INIT_NO_PREALLOC ( 
+MAP_DEFINE(ipv4_src) = MAP_INIT_NO_PREALLOC ( 
     BPF_MAP_TYPE_LPM_TRIE,
     8,
     sizeof(__u32),
     MAX_LPM_IPV4_NUM
 );
-XDP_ACTION_DEFINE(ipv4)
+XDP_ACTION_DEFINE(ipv4_src)
 {
     int           hdrsize;
     __u32        *action;
@@ -130,28 +130,75 @@ XDP_ACTION_DEFINE(ipv4)
     key.b8[5] = (src_ip >> 8) & 0xff;
     key.b8[6] = (src_ip >> 16) & 0xff;
     key.b8[7] = (src_ip >> 24) & 0xff;
-    action = bpf_map_lookup_elem(MAP_REF(ipv4), &key);
+    action = bpf_map_lookup_elem(MAP_REF(ipv4_src), &key);
     if (!action) {
-        pdebug("ipv4 xdp pass\n");
+        pdebug("ipv4 src xdp pass\n");
         return XDP_PASS;
     }
 
     return *action;
 }
 
-MAP_DEFINE(ipv6) = MAP_INIT_NO_PREALLOC (
+MAP_DEFINE(ipv4_dst) = MAP_INIT_NO_PREALLOC ( 
+    BPF_MAP_TYPE_LPM_TRIE,
+    8,
+    sizeof(__u32),
+    MAX_LPM_IPV4_NUM
+);
+XDP_ACTION_DEFINE(ipv4_dst)
+{
+    int           hdrsize;
+    __u32        *action;
+    __be32        dst_ip = 0;
+    struct iphdr *iph = cur->pos;
+    union  ipv4_key key;
+
+    if (iph + 1 > (struct iphdr *)data_end) {
+        pdebug("ipv4 xdp aborted\n");
+        return XDP_ABORTED;
+    }
+
+    hdrsize = iph->ihl * 4;
+    if(hdrsize < sizeof(struct iphdr)) {
+        pdebug("ipv4 xdp aborted\n");
+        return XDP_ABORTED;
+    }
+
+    if (cur->pos + hdrsize > data_end) {
+        pdebug("ipv4 xdp aborted\n");
+        return XDP_ABORTED;
+    }
+    cur->pos += hdrsize;
+    cur->l4_proto = iph->protocol;
+    dst_ip = iph->daddr;
+    key.b32[0] = 32;
+    key.b8[4] = dst_ip & 0xff;
+    key.b8[5] = (dst_ip >> 8) & 0xff;
+    key.b8[6] = (dst_ip >> 16) & 0xff;
+    key.b8[7] = (dst_ip >> 24) & 0xff;
+    action = bpf_map_lookup_elem(MAP_REF(ipv4_dst), &key);
+    if (!action) {
+        pdebug("ipv4 src xdp pass\n");
+        return XDP_PASS;
+    }
+
+    return *action;
+}
+
+
+MAP_DEFINE(ipv6_src) = MAP_INIT_NO_PREALLOC (
     BPF_MAP_TYPE_LPM_TRIE,
     20,
     sizeof(__u32),
     MAX_LPM_IPV6_NUM
 );
-XDP_ACTION_DEFINE(ipv6)
+XDP_ACTION_DEFINE(ipv6_src)
 {
     struct ipv6hdr *ip6h = cur->pos;
     __u32          *action;
 
     if (ip6h + 1 > (struct ipv6hdr*)data_end) {
-        pdebug("ipv6 xdp aborted\n");
+        pdebug("ipv6 src xdp aborted\n");
         return XDP_ABORTED;
     }
     cur->pos = ip6h + 1;
@@ -163,9 +210,42 @@ XDP_ACTION_DEFINE(ipv6)
         .prefixlen = 128,
         .ipv6_addr = ip6h->saddr
     };
-    action = bpf_map_lookup_elem(MAP_REF(ipv6), &key6);
+    action = bpf_map_lookup_elem(MAP_REF(ipv6_src), &key6);
     if (!action) {
-        pdebug("ipv6 xdp pass\n");
+        pdebug("ipv6 src xdp pass\n");
+        return XDP_PASS;
+    }
+
+    return *action;
+}
+
+MAP_DEFINE(ipv6_dst) = MAP_INIT_NO_PREALLOC (
+    BPF_MAP_TYPE_LPM_TRIE,
+    20,
+    sizeof(__u32),
+    MAX_LPM_IPV6_NUM
+);
+XDP_ACTION_DEFINE(ipv6_dst)
+{
+    struct ipv6hdr *ip6h = cur->pos;
+    __u32          *action;
+
+    if (ip6h + 1 > (struct ipv6hdr*)data_end) {
+        pdebug("ipv6 src xdp aborted\n");
+        return XDP_ABORTED;
+    }
+    cur->pos = ip6h + 1;
+    cur->l4_proto = ip6h->nexthdr;
+    struct {
+        __u32 prefixlen;
+        struct in6_addr ipv6_addr;
+    }key6 = {
+        .prefixlen = 128,
+        .ipv6_addr = ip6h->daddr
+    };
+    action = bpf_map_lookup_elem(MAP_REF(ipv6_dst), &key6);
+    if (!action) {
+        pdebug("ipv6 src xdp pass\n");
         return XDP_PASS;
     }
 
@@ -267,6 +347,8 @@ XDP_SOCK_START
 int xdp_sock_main(struct xdp_md *ctx)
 {
     __u32  action = XDP_PASS;
+    __u32  action_src = XDP_PASS;
+    __u32  action_dst = XDP_PASS;
     int   *value;
     int    index;
 
@@ -296,14 +378,32 @@ int xdp_sock_main(struct xdp_md *ctx)
 
     switch(cur->l3_proto) {
         case ETH_P_IP:
-            action = CALL_ACTION(ipv4);
+            action_src = CALL_ACTION(ipv4_src);
+            if (action_src == XDP_DROP || action_src == XDP_ABORTED) {
+                goto out;
+            }
+            action_dst = CALL_ACTION(ipv4_dst);
+            if (action_dst == XDP_DROP || action_dst == XDP_ABORTED) {
+                goto out;
+            }
             break;
         case ETH_P_IPV6:
-            action = CALL_ACTION(ipv6);
+            action_src = CALL_ACTION(ipv6_src);
+            if (action_src == XDP_DROP || action_src == XDP_ABORTED) {
+                goto out;
+            }
+            action_dst = CALL_ACTION(ipv6_dst);
+            if (action_dst == XDP_DROP || action_dst == XDP_ABORTED) {
+                goto out;
+            }
             break;
         default:
-            action = XDP_PASS;
+            action_src = XDP_PASS;
+            action_dst = XDP_PASS;
             break;
+    }
+    if (action_dst == XDP_REDIRECT || action_src == XDP_REDIRECT) {
+        action = XDP_REDIRECT;
     }
     if (action == XDP_REDIRECT) {
         index = ctx->rx_queue_index;

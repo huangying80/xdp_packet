@@ -33,6 +33,7 @@ struct xdp_runtime {
     int          eth_numa_node;
     struct xdp_iface    iface;
     struct xdp_mempool *mempool;
+    xdp_worker_func_t   worker_func;
 };
 
 int xdp_runtime_init(struct xdp_runtime *runtime, const char *ifname);
@@ -41,15 +42,12 @@ void xdp_runtime_release(struct xdp_runtime *runtime);
 int xdp_runtime_setup_queue(struct xdp_runtime *runtime,
     size_t queue_count, size_t queue_size);
 int xdp_runtime_setup_workers(struct xdp_runtime *runtime,
+    xdp_worker_func_t worker_func,
     unsigned short worker_count);
+int xdp_runtime_startup_workers(struct xdp_runtime *runtime);
 void xdp_runtime_setup_size(struct xdp_runtime *runtime,
     uint32_t fill_size, uint32_t comp_size,
     uint32_t frame_size, uint32_t frame_headroom);
-
-int xdp_runtime_write(struct xdp_frame **frames, uint16_t frame_count,
-    uint16_t tx_queue_id);
-int xdp_runtime_read(struct xdp_frame **frames, uint16_t frame_count,
-    uint16_t rx_queue_id);
 
 int xdp_runtime_tcp_packet(uint16_t port);
 int xdp_runtime_tcp_drop(uint16_t port);
@@ -63,6 +61,11 @@ int xdp_runtime_l3_drop(uint16_t l3_protocal);
 int xdp_runtime_l4_packet(uint16_t l4_protocal);
 int xdp_runtime_l4_drop(uint16_t l4_protocal);
  
+int xdp_runtime_ipv4_packet(const char *ip, uint32_t prefix, int type);
+int xdp_runtime_ipv4_drop(const char *ip, uint32_t prefix, int type);
+
+int xdp_runtime_ipv6_packet(const char *ip, uint32_t prefix, int type);
+int xdp_runtime_ipv6_drop(const char *ip, uint32_t prefix, int type);
 #ifdef __cplusplus
 } 
 #endif
