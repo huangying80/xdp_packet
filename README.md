@@ -9,4 +9,4 @@ huangying, email: hy_gzr@163.com
 同时非常感谢dpdk提供的支持和参考以及宝贵的系统经验！
 
 #### 修改历史：
-**已经移动到Changlog.md**
+**已经移动到Changelog.md**
