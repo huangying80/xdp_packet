@@ -33,7 +33,11 @@
 #endif
 
 
-int xdp_runtime_init(struct xdp_runtime *runtime, const char *ifname)
+int
+xdp_runtime_init(struct xdp_runtime *runtime,
+    const char *ifname,
+    const char *prog,
+    const char *sec)
 {
     int ret;
    
@@ -49,7 +53,7 @@ int xdp_runtime_init(struct xdp_runtime *runtime, const char *ifname)
     if (xdp_eth_get_info(ifname, &runtime->iface) < 0) {
         return -1;
     }
-    ret = xdp_prog_init(ifname, NULL, NULL);
+    ret = xdp_prog_init(ifname, prog, sec);
     if (ret < 0) {
         return -1;
     }
