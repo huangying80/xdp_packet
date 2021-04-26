@@ -7,10 +7,11 @@ int main(int argc, char *argv[])
     const char *eth = argv[1];
     const char *ip = argv[2];
     uint16_t    port = atoi(argv[3]);
+    const char *prog = argv[4];
     int         ret;
     struct xdp_runtime runtime;
 
-    ret = xdp_runtime_init(&runtime, eth);
+    ret = xdp_runtime_init(&runtime, eth, prog, NULL);
     if (ret < 0) {
         fprintf(stderr, "xdp_runtime_init failed with %s\n", eth);
         goto out;

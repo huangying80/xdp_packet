@@ -2,9 +2,9 @@ CLANG := clang
 CLANG_FLAGS := -D__BPF_TRACING__ -Wall -Werror -O2
 LLC := llc
 XDP_PROG_SRC := $(wildcard xdp_kern_prog/*.c)
-#XDP_PROG_SRC := xdp_kern_prog/xdp_kern_prog.c
 XDP_PROG_OBJ := $(XDP_PROG_SRC:%.c=%.ll)
-XDP_PROG_TARGET := xdp_kern_prog.o
+XDP_PROG_TARGET := $(XDP_PROG_OBJ:%.ll=%.o)
+#XDP_PROG_TARGET := xdp_kern_prog.o
 XDP_PROG_DEBUG := -DKERN_DEBUG -g
 
 CC := gcc
