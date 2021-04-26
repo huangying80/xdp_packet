@@ -52,12 +52,12 @@ struct hdr_cursor {
     __u8     l4_proto;
 };
 
-MAP_DEFINE(xsks_map) = {
+XSKS_MAP_DEFINE = MAP_INIT (
     BPF_MAP_TYPE_XSKMAP,
     sizeof(int),
     sizeof(int),
     MAX_ETH_QUEUE_MAX
-};
+);
 
 
 MAP_DEFINE(layer3) = MAP_INIT (
@@ -365,12 +365,12 @@ int xdp_sock_main(struct xdp_md *ctx)
     action = CALL_ACTION(layer3);
     if (action == XDP_REDIRECT) {
         index = ctx->rx_queue_index;
-        value = bpf_map_lookup_elem(MAP_REF(xsks_map), &index);
+        value = bpf_map_lookup_elem(XSKS_MAP_REF, &index);
         if (!value) {
             perror("oops, no queue matched for %d in layer3", cur->l3_proto);
             return XDP_ABORTED;
         }
-        return bpf_redirect_map(MAP_REF(xsks_map), index, 0);
+        return bpf_redirect_map(XSKS_MAP_REF, index, 0);
     }
     if (action != XDP_PASS) {
         goto out;
@@ -407,12 +407,12 @@ int xdp_sock_main(struct xdp_md *ctx)
     }
     if (action == XDP_REDIRECT) {
         index = ctx->rx_queue_index;
-        value = bpf_map_lookup_elem(MAP_REF(xsks_map), &index);
+        value = bpf_map_lookup_elem(XSKS_MAP_REF, &index);
         if (!value) {
             perror("oops, no queue matched for %d", cur->l3_proto);
             return XDP_ABORTED;
         }
-        return bpf_redirect_map(MAP_REF(xsks_map), index, 0);
+        return bpf_redirect_map(XSKS_MAP_REF, index, 0);
     }
     if (action != XDP_PASS) {
         goto out;
@@ -421,12 +421,12 @@ int xdp_sock_main(struct xdp_md *ctx)
     action = CALL_ACTION(layer4);
     if (action == XDP_REDIRECT) {
         index = ctx->rx_queue_index;
-        value = bpf_map_lookup_elem(MAP_REF(xsks_map), &index);
+        value = bpf_map_lookup_elem(XSKS_MAP_REF, &index);
         if (!value) {
             perror("oops, no queue matched for %d in layer4", cur->l4_proto);
             return XDP_ABORTED;
         }
-        return bpf_redirect_map(MAP_REF(xsks_map), index, 0);
+        return bpf_redirect_map(XSKS_MAP_REF, index, 0);
     }
     
     if (action != XDP_PASS) {
@@ -445,13 +445,13 @@ int xdp_sock_main(struct xdp_md *ctx)
     }
     if (action == XDP_REDIRECT) {
         index = ctx->rx_queue_index;
-        value = bpf_map_lookup_elem(MAP_REF(xsks_map), &index);
+        value = bpf_map_lookup_elem(XSKS_MAP_REF, &index);
         if (!value) {
             perror("oops, no queue matched for port %u in layer3 %u layer4 %u",
                 bpf_ntohs(cur->port), cur->l3_proto, cur->l4_proto);
             return XDP_ABORTED;
         }
-        return bpf_redirect_map(MAP_REF(xsks_map), index, 0);
+        return bpf_redirect_map(XSKS_MAP_REF, index, 0);
     }
 
 out:

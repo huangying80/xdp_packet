@@ -33,7 +33,11 @@
 #endif
 
 
-int xdp_runtime_init(struct xdp_runtime *runtime, const char *ifname)
+int
+xdp_runtime_init(struct xdp_runtime *runtime,
+    const char *ifname,
+    const char *prog,
+    const char *sec)
 {
     int ret;
    
@@ -49,7 +53,7 @@ int xdp_runtime_init(struct xdp_runtime *runtime, const char *ifname)
     if (xdp_eth_get_info(ifname, &runtime->iface) < 0) {
         return -1;
     }
-    ret = xdp_prog_init(ifname, NULL, NULL);
+    ret = xdp_prog_init(ifname, prog, sec);
     if (ret < 0) {
         return -1;
     }
@@ -86,7 +90,9 @@ xdp_runtime_setup_queue(struct xdp_runtime *runtime,
     size_t                frame_count;
     size_t                frame_size;
     size_t                frame_headroom;
+    size_t                qmem_size;
     size_t                mempool_size;
+    size_t                umem_size;
     size_t                fp_size;
     int                   ret = -1;
     int                   i = 0;
@@ -97,6 +103,9 @@ xdp_runtime_setup_queue(struct xdp_runtime *runtime,
         return -1;
     }
 
+    umem_size = xdp_dev_umem_info_pool_memsize(queue_count);
+    qmem_size = xdp_dev_queue_memsize(queue_count);
+
     frame_count = runtime->fill_size;
     frame_size = runtime->frame_size;
     frame_headroom = runtime->frame_headroom;
@@ -104,21 +113,16 @@ xdp_runtime_setup_queue(struct xdp_runtime *runtime,
     if (!fp_size) {
         return -1;
     }
-    mempool_size = (sizeof(struct xdp_rx_queue) + sizeof(struct xdp_tx_queue))
-        * queue_count;
-    mempool_size = XDP_ALIGN(mempool_size, XDP_CACHE_LINE);
-    mempool_size += fp_size * queue_count;;
-    mempool_size += xdp_dev_umem_info_pool_memsize(queue_count);
 
+    mempool_size = umem_size + qmem_size + fp_size * queue_count;;
     numa_node = runtime->eth_numa_node;
-
     pool = xdp_mempool_create(numa_node, mempool_size); 
     if (!pool) {
         goto out;
     }
 
     iface = &runtime->iface;
-    ret = xdp_dev_configure(pool, iface->ifname, queue_count);
+    ret = xdp_dev_configure(pool, iface, queue_count);
     if (ret < 0) {
         goto out;
     }

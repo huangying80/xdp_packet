@@ -10,21 +10,25 @@
 #include "xdp_log.h"
 
 struct xdp_dev_conf {
-    uint16_t     queues;
-    uint16_t     max_queues;
-    int          configured;
-    int          numa_node;
-    struct xdp_iface iface;
-    struct  xdp_rx_queue *rx_queue;
-    struct  xdp_tx_queue *tx_queue;
+    uint16_t                    queues;
+    uint16_t                    max_queues;
+    int                         configured;
+    int                         numa_node;
+    struct xdp_iface           *iface;
+    struct  xdp_rx_queue       *rx_queue;
+    struct  xdp_tx_queue       *tx_queue;
     struct  xdp_umem_info_pool *umem_pool;
 };
 
 static struct xdp_dev_conf xdp_dev;
+static struct xdp_rx_queue *xdp_dev_rxq_create(
+    struct xdp_mempool *pool, size_t queue_count);
+static struct xdp_tx_queue *xdp_dev_txq_create(
+    struct xdp_mempool *pool, size_t queue_count);
 
 int
 xdp_dev_configure(struct xdp_mempool *pool,
-    const char *ifname, int queue_count)
+    struct xdp_iface *iface, int queue_count)
 {
     int     max_queues;
     int     ret = -1;
@@ -35,18 +39,18 @@ xdp_dev_configure(struct xdp_mempool *pool,
 
     memset(&xdp_dev, 0, sizeof(struct xdp_dev_conf));
 
-    ret = xdp_eth_get_queue(ifname, &max_queues, NULL);
+    ret = xdp_eth_get_queue(iface->ifname, &max_queues, NULL);
     if (ret < 0) {
         goto out;
     }
-
+    DEBUG_OUT("%s max queue %d", iface->ifname, max_queues);
     if (queue_count > max_queues || queue_count <= 0) {
         ERR_OUT("specified queue count error, max_queue %d, queue count %d",
             max_queues, queue_count);    
         goto out;
     }
 
-    ret = xdp_eth_set_queue(ifname, queue_count);
+    ret = xdp_eth_set_queue(iface->ifname, queue_count);
     if (ret < 0) {
        goto out; 
     }
@@ -55,18 +59,19 @@ xdp_dev_configure(struct xdp_mempool *pool,
     if (!umem_pool) {
         goto out;
     }
-    rxq = xdp_mempool_calloc(pool, sizeof(struct xdp_rx_queue), queue_count);
+
+    rxq = xdp_dev_rxq_create(pool, queue_count);
     if (!rxq) {
         ERR_OUT("allocate memory failed for rx queue");
         goto out;
     }
 
-    txq = xdp_mempool_calloc(pool, sizeof(struct xdp_tx_queue), queue_count);
-    if (!txq) {
+    txq = xdp_dev_txq_create(pool, queue_count);
+    if (!rxq) {
         ERR_OUT("allocate memory failed for tx queue");
         goto out;
     }
-
+    
     for (i = 0; i < queue_count; i++) {
         txq[i].pair = rxq + i;
         rxq[i].pair = txq + i;
@@ -93,7 +98,8 @@ out:
     xdp_dev.rx_queue = rxq;
     xdp_dev.tx_queue = txq;
     xdp_dev.configured = !ret ? 1 : ret;
-    xdp_dev.numa_node = xdp_eth_numa_node(ifname);
+    xdp_dev.iface = iface;
+    xdp_dev.numa_node = xdp_eth_numa_node(iface->ifname);
     xdp_dev.umem_pool = umem_pool;
 
     return ret;
@@ -116,7 +122,7 @@ int xdp_dev_queue_configure(uint16_t queue_id, uint32_t queue_size,
     rxq = xdp_dev.rx_queue + queue_id;
     rxq->framepool = fp;
 
-    ret = xdp_sock_configure(&xdp_dev.iface, rxq, queue_size,
+    ret = xdp_sock_configure(xdp_dev.iface, rxq, queue_size,
         xdp_dev.umem_pool);
     if (ret < 0) {
         goto out;
@@ -168,6 +174,7 @@ inline size_t xdp_dev_umem_info_pool_memsize(uint32_t n)
     size = sizeof(struct xdp_umem_info_pool);
     size += sizeof(struct xdp_umem_info) * n;
     size = XDP_ALIGN(size, XDP_CACHE_LINE);
+    size += XDP_CACHE_LINE;
     return size;
 }
     
@@ -178,7 +185,7 @@ xdp_dev_umem_info_pool_create(struct xdp_mempool *pool, uint32_t n)
     size_t size;
     struct xdp_umem_info_pool *umem_pool = NULL;
     size = xdp_dev_umem_info_pool_memsize(n);
-    umem_pool = xdp_mempool_calloc(pool, size, XDP_CACHE_LINE);
+    umem_pool = xdp_mempool_alloc(pool, size, XDP_CACHE_LINE);
     if (!umem_pool) {
         return NULL;
     }
@@ -191,7 +198,7 @@ struct xdp_umem_info *
 xdp_dev_umem_info_alloc(struct xdp_umem_info_pool *umem_pool, size_t n)
 {
     struct xdp_umem_info *umem = NULL;
-    if (umem_pool->last + n >= umem_pool->len) {
+    if (umem_pool->last + n > umem_pool->len) {
         return NULL;
     }
     umem = &umem_pool->start_addr[umem_pool->last];
@@ -207,3 +214,50 @@ xdp_dev_umem_info_calloc(struct xdp_umem_info_pool *umem_pool, size_t n)
     memset(umem, 0, n * sizeof(struct xdp_umem_info));
     return umem;
 }
+
+inline size_t xdp_dev_queue_memsize(size_t queue_count)
+{
+    size_t tx_size;
+    size_t rx_size;
+    rx_size = sizeof(struct xdp_rx_queue) * queue_count;
+    rx_size = XDP_ALIGN(rx_size, XDP_CACHE_LINE);
+    rx_size += XDP_CACHE_LINE;
+
+    tx_size = sizeof(struct xdp_tx_queue) * queue_count;
+    tx_size = XDP_ALIGN(tx_size, XDP_CACHE_LINE);
+    tx_size += XDP_CACHE_LINE;
+    return tx_size + rx_size;
+}
+
+struct xdp_rx_queue *
+xdp_dev_rxq_create(struct xdp_mempool *pool, size_t queue_count)
+{
+    struct xdp_rx_queue *rxq = NULL;
+    size_t rx_size;
+    rx_size = sizeof(struct xdp_rx_queue) * queue_count;
+    rx_size = XDP_ALIGN(rx_size, XDP_CACHE_LINE);
+    rx_size += XDP_CACHE_LINE;
+    rxq = xdp_mempool_alloc(pool, rx_size, XDP_CACHE_LINE);
+    if (rxq) {
+        memset(rxq, 0, sizeof(struct xdp_rx_queue) * queue_count);
+    }
+    
+    return rxq;
+}
+
+struct xdp_tx_queue *
+xdp_dev_txq_create(struct xdp_mempool *pool, size_t queue_count)
+{
+    struct xdp_tx_queue *txq = NULL;
+    size_t tx_size;
+    tx_size = sizeof(struct xdp_tx_queue) * queue_count;
+    tx_size = XDP_ALIGN(tx_size, XDP_CACHE_LINE);
+    tx_size += XDP_CACHE_LINE;
+    txq = xdp_mempool_alloc(pool, tx_size, XDP_CACHE_LINE);
+    if (txq) {
+        memset(txq, 0, sizeof(struct xdp_tx_queue) * queue_count);
+    }
+
+    return txq;
+}
+

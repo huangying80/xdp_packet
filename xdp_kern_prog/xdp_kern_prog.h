@@ -16,6 +16,10 @@
 #define MAP_REF(_type) &MAP_NAME(_type)
 #define MAP_DEFINE(_type) struct bpf_map_def SEC("maps") MAP_NAME(_type)
 
+#define XSKS_MAP_DEFINE struct bpf_map_def SEC("maps") xsks_map
+#define XSKS_MAP_REF &xsks_map
+#define XSKS_MAP_NAME xsks_map
+
 
 #define MAP_INIT(_t, _ks, _vs, _me)   \
 {                                     \

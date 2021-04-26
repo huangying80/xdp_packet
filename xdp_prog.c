@@ -86,8 +86,23 @@ int xdp_prog_init(const char *ifname, const char *prog, const char *section)
     }
     cfg.xdp_flags = XDP_FLAGS_UPDATE_IF_NOEXIST | XDP_FLAGS_DRV_MODE;
     ret = xdp_load_prog(&cfg, &xdp_rt);
-    if (ret < 0) {
-        return -1;
+    switch (ret) {
+        case 0:
+            break;
+        case -EBUSY:
+        case -EEXIST:
+            /*
+            xdp_link_detach(cfg.iface.ifindex, cfg.xdp_flags, 0);
+            ret = xdp_load_prog(&cfg, &xdp_rt);
+            if (ret < 0) {
+                return -1;
+            }
+            */
+            ERR_OUT("xdp_load_prog failed, %s: %s", cfg.prog_path, cfg.section);
+            return -1;
+            break;
+        default:
+            return -1;
     }
 
     //here find map
@@ -104,11 +119,23 @@ int xdp_prog_init(const char *ifname, const char *prog, const char *section)
     }
     xdp_rt.map_fd[IPV4_SRC_MAP_FD] = fd;
 
+    fd = xdp_find_map(bpf_obj, textify(MAP_NAME(ipv4_dst)));
+    if (fd < 0) {
+        goto out;
+    }
+    xdp_rt.map_fd[IPV4_DST_MAP_FD] = fd;
+
     fd = xdp_find_map(bpf_obj, textify(MAP_NAME(ipv6_src)));
     if (fd < 0) {
         goto out;
     }
     xdp_rt.map_fd[IPV6_SRC_MAP_FD] = fd;
+
+    fd = xdp_find_map(bpf_obj, textify(MAP_NAME(ipv6_dst)));
+    if (fd < 0) {
+        goto out;
+    }
+    xdp_rt.map_fd[IPV6_DST_MAP_FD] = fd;
 
     fd = xdp_find_map(bpf_obj, textify(MAP_NAME(layer4)));
     if (fd < 0) {
@@ -128,7 +155,7 @@ int xdp_prog_init(const char *ifname, const char *prog, const char *section)
     }
     xdp_rt.map_fd[UDPPORT_MAP_FD] = fd;
 
-    fd = xdp_find_map(bpf_obj, textify(MAP_NAME(xsks_map)));
+    fd = xdp_find_map(bpf_obj, textify(XSKS_MAP_NAME));
     if (fd < 0) {
         goto out;
     }
@@ -287,7 +314,7 @@ int xdp_load_prog(const struct xdp_prog_conf *cfg, struct xdp_prog *xdp_rt)
             cfg->prog_path, cfg->section, cfg->iface.ifname);
         bpf_program__unload(bpf_prog);
         bpf_object__close(bpf_obj);
-        return -1;
+        return err;
     }
     xdp_rt->bpf_obj = bpf_obj;
     xdp_rt->bpf_prog = bpf_prog;

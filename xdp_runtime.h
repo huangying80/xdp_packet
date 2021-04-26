@@ -36,7 +36,11 @@ struct xdp_runtime {
     xdp_worker_func_t   worker_func;
 };
 
-int xdp_runtime_init(struct xdp_runtime *runtime, const char *ifname);
+int xdp_runtime_init(struct xdp_runtime *runtime,
+    const char *ifname,
+    const char *prog,
+    const char *sec);
+
 void xdp_runtime_release(struct xdp_runtime *runtime);
 
 int xdp_runtime_setup_queue(struct xdp_runtime *runtime,

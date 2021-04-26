@@ -23,6 +23,7 @@ struct xdp_mempool* xdp_mempool_create(int numa_node, size_t size)
     int    oldpolicy;
     int    ret = 0;
     int    numa_on = 0;
+    int    i = 0;
 
      
     if (numa_node >= 0 && xdp_numa_check()) {
@@ -30,7 +31,7 @@ struct xdp_mempool* xdp_mempool_create(int numa_node, size_t size)
         numa_on = 1;
     }
 
-    for (ops = mempool_ops[0]; ops; ops++) {
+    while ((ops = mempool_ops[i++])) {
         ret = ops->init(ops->private_data);
         if (ret < 0) {
             continue;
@@ -61,31 +62,36 @@ void xdp_mempool_release(struct xdp_mempool *pool)
 
 void *xdp_mempool_alloc(struct xdp_mempool *pool, size_t size, size_t align)
 {
-    void *addr;
-    
-    if (size & (size - 1)) {
-        ERR_OUT("size %lu is error", size);
-        return NULL;
-    }
-    if (pool->last + size >= pool->end) {
+    void   *addr;
+
+    if (pool->end - pool->last < size) {
         ERR_OUT("memory is not enough for size %lu", size);
         return NULL;
     }
-    if (!align) {
-        align = XDP_CACHE_LINE;
+
+    addr = pool->last;
+    if (XDP_IS_POWER2(align)) {
+        addr = (void *)XDP_ALIGN((uintptr_t)addr, align);
+    } 
+
+    if (pool->end - pool->last < size) {
+        ERR_OUT("aligned addr memory is not enough for size %lu", size);
+        return NULL;
     }
-    addr = (void *)XDP_ALIGN((size_t)pool->last, align);
     pool->last = addr + size; 
 
     return addr;
 }
 
-void *xdp_mempool_calloc(struct xdp_mempool *pool, size_t size, size_t align)
+void *
+xdp_mempool_calloc(struct xdp_mempool *pool, size_t size, size_t n, 
+    size_t align)
 {
     void *addr;
+    size_t total_size = size * n;
 
-    addr = xdp_mempool_alloc(pool, size, align);
-    memset(addr, 0, size);
+    addr = xdp_mempool_alloc(pool, total_size, align);
+    memset(addr, 0, total_size);
 
     return addr;
 }
