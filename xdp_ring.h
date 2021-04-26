@@ -8,8 +8,6 @@
 
 #include "xdp_mempool.h"
 
-#define XDP_CACHE_ALIGN __attribute__((aligned(XDP_CACHE_LINE)))
-
 #define XDP_RING_SP_ENQ 0x0001
 #define XDP_RING_SC_DEQ 0x0002
 
@@ -32,14 +30,15 @@ struct xdp_ring {
     uint32_t            size;
     uint32_t            mask;
     uint32_t            capacity;
-    char                pad0 XDP_CACHE_ALIGN;
+    char                pad0[0] XDP_CACHE_ALIGN;
     struct xdp_headtail prod XDP_CACHE_ALIGN;
-    char                pad1 XDP_CACHE_ALIGN;
+    char                pad1[0] XDP_CACHE_ALIGN;
     struct xdp_headtail cons XDP_CACHE_ALIGN;
-};
+} XDP_CACHE_ALIGN;
 
 struct xdp_ring *xdp_ring_create(struct xdp_mempool *pool,
     uint32_t count, int flags);
+
 size_t xdp_ring_memory_size(uint32_t count);
 
 #define XDP_ENQUEUE_ADDR(r, ring_start, prod_head, obj_table, n, obj_type) \

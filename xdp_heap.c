@@ -45,20 +45,20 @@ xdp_heap_reserve(int node, size_t size, __attribute__((unused))void *data)
     struct xdp_mempool *pool = NULL;
     void   *addr = NULL;
 
-    reserve_size = XDP_ALIGN(size + sizeof(struct xdp_mempool), 4096);
+    reserve_size = (size_t)XDP_ALIGN(size + sizeof(struct xdp_mempool), XDP_PAGESIZE);
+    //reserve_size = 1 << 30;
     addr = mmap(NULL, reserve_size, PROT_READ|PROT_WRITE,
-        MAP_SHARED | MAP_POPULATE | MAP_FIXED, -1, 0);
-    if (!addr) {
+        MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+    if (!addr || addr == MAP_FAILED) {
         ERR_OUT("mmap failed, err: %d", errno);    
         return NULL;
     }
     pool = addr;
     pool->total_size = reserve_size;
-    pool->start = (void*)XDP_ALIGN((size_t)addr + sizeof(struct xdp_mempool),
-        4096);
+    pool->start = addr + sizeof(struct xdp_mempool);
     pool->end = addr + reserve_size;
     pool->last = pool->start;
-    pool->size = reserve_size - (pool->start - addr);
+    pool->size = pool->end - pool->last;
     pool->numa_node = node;
     pool->ops_index = XDP_DEFAULT_OPS;
     return pool;

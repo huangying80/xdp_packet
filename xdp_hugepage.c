@@ -128,7 +128,8 @@ xdp_hugepage_reserve(int node, size_t size, __attribute__((unused))void *data)
     if (ret < 0 || !page_size || !page_num) {
         goto out;    
     }
-    reserve_size = XDP_ALIGN(size + sizeof(struct xdp_mempool), page_size);
+    reserve_size = (size_t)XDP_ALIGN(size + sizeof(struct xdp_mempool),
+        page_size);
     avail_size = page_size * page_num;
     if (reserve_size > avail_size) {
         ERR_OUT("size(%lu) is more than hugepage size(%lu)",
@@ -141,19 +142,18 @@ xdp_hugepage_reserve(int node, size_t size, __attribute__((unused))void *data)
         goto out;
     }
     addr = mmap(NULL, reserve_size, PROT_READ | PROT_WRITE,
-        MAP_SHARED | MAP_POPULATE | MAP_FIXED,
+        MAP_SHARED | MAP_POPULATE /*| MAP_FIXED*/,
         fd, 0);
-    if (addr == MAP_FAILED) {
+    if (!addr || addr == MAP_FAILED) {
         ERR_OUT("mmap failed, err: %d", errno);
         goto out;
     }
     pool = (struct xdp_mempool *)addr;
     pool->total_size = reserve_size;
-    pool->start =
-        (void *)XDP_ALIGN((size_t)addr + sizeof(struct xdp_mempool), 4096);
+    pool->start = addr + sizeof(struct xdp_mempool);
     pool->end = addr + reserve_size;
     pool->last = pool->start;
-    pool->size = reserve_size - (pool->start - addr);
+    pool->size = pool->end - pool->start;
     pool->numa_node = node;
     pool->ops_index = XPD_HUGEPAGE_OPS;
 out:
