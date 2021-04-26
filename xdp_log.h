@@ -28,7 +28,7 @@ fprintf(stderr, "\n")
 
 #endif
 
-#ifdef XDP_ERROR_VERBOS
+#ifdef XDP_ERROR_VERBOSE
 
 #define XDP_PANIC(format, args...) \
     fprintf(stderr, "[%s:%d %s OOPS] ", __FILE__, __LINE__, __func__); \

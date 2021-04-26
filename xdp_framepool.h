@@ -21,7 +21,7 @@ struct xdp_frame {
     off_t    data_off;
     size_t   data_len;
     void    *addr;
-};
+} XDP_CACHE_ALIGN;
 
 struct xdp_framepool {
     uint32_t            frame_size;
@@ -30,7 +30,7 @@ struct xdp_framepool {
     void               *base_addr;
     size_t              count;
     struct xdp_frame    frame[0];
-};
+} XDP_CACHE_ALIGN;
 
 struct xdp_frame *xdp_framepool_addr_to_frame(
     struct xdp_framepool *fpool, void *addr);

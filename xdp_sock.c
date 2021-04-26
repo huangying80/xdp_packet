@@ -58,16 +58,20 @@ xdp_sock_configure(struct xdp_iface *iface,
     ret = xsk_socket__create(&rxq->xsk, iface->ifname, rxq->queue_index,
         rxq->umem->umem, &rxq->rx, &txq->tx, &cfg);
     if (ret < 0) {
+        ERR_OUT("xsk_socket__create failed for rxq %d, err %d",
+            rxq->queue_index, ret);
         goto out;
     }
 
     //for zc
     n = xdp_framepool_get_frame(rxq->framepool, fq_bufs, reserve_size);
     if (!n) {
+        ERR_OUT("xdp_framepool_get_frame faield for rxq %d", rxq->queue_index);
         goto out;
     }
     ret = xdp_sock_reserve_fq_zc(rxq->umem, n, fq_bufs);
     if (ret < 0) {
+        ERR_OUT("xdp_socket_reserve_fq_zc faield for rxq %d", rxq->queue_index);
         xsk_socket__delete(rxq->xsk);
         goto out;
     }
@@ -270,7 +274,7 @@ xdp_sock_reserve_fq_zc(struct xdp_umem_info *umem, uint16_t reserve_size,
     uint32_t    index = 0;
     uint16_t    i;
 
-    if (xdp_sock_unlikely(xsk_ring_prod__reserve(fq, reserve_size, &index))) {
+    if (xdp_sock_unlikely(!xsk_ring_prod__reserve(fq, reserve_size, &index))) {
         xdp_framepool_put_frame(umem->framepool, bufs, reserve_size);
         ERR_OUT("Failed to reserve enough fq descs");
         return -1;

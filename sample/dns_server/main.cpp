@@ -1,22 +1,64 @@
 #include <stdio.h>
-#include "process.h"
+#include <unistd.h>
+#include <getopt.h>
+
 #include "xdp_runtime.h"
+#include "xdp_log.h"
+
+#include "process.h"
 
 int main(int argc, char *argv[])
 {
-    const char *eth = argv[1];
-    const char *ip = argv[2];
-    uint16_t    port = atoi(argv[3]);
-    const char *prog = argv[4];
+    char       *eth = NULL;
+    char       *ip = NULL;
+    char       *prog = NULL;
+    uint16_t    port = 0;
     int         ret;
+    int         c = -1;
+    int         option_index;
     struct xdp_runtime runtime;
 
+    struct option long_options[] = {
+        {"dev", required_argument, NULL, 'd'},
+        {"ip", required_argument, NULL, 'i'},
+        {"port", required_argument, NULL, 'p'},
+        {"prog", required_argument, NULL, 'g'},
+        {NULL, 0, NULL, 0}
+    };
+    while (1) {
+        c = getopt_long(argc, argv, "d:i:p:g:", long_options, &option_index);
+        if (c == -1) {
+            break;
+        }
+        switch (c) {
+            case 'd':
+                eth = strdup(optarg);               
+                break;
+            case 'i':
+                ip = strdup(optarg);
+                break;
+            case 'p':
+                port = atoi(optarg);
+                break;
+            case 'g':
+                prog = strdup(optarg);
+                break;
+            default:
+                fprintf(stderr, "argument error !\n");
+                return -1;
+        }
+    }
+    if (!eth || !eth[0] || !ip || !ip[0] || !prog || !prog[0] || !port) {
+        fprintf(stderr, "argument error !\n");
+        return -1;
+    }
+>>>>>>> eb97b0cf19606a1378b84582c513343530195753
     ret = xdp_runtime_init(&runtime, eth, prog, NULL);
     if (ret < 0) {
         fprintf(stderr, "xdp_runtime_init failed with %s\n", eth);
         goto out;
     }
-    ret = xdp_runtime_udp_packet(53);
+    ret = xdp_runtime_udp_packet(port);
     if (ret < 0) {
         fprintf(stderr, "xdp_runtime_udp_packet failed with %s\n", eth);
         goto out;

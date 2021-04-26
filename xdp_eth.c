@@ -43,9 +43,9 @@ struct eth_channels {
     uint32_t   combined_count;
 };
 
-int xdp_eth_get_queue(const char *ifname, int *max_queue, int *curr_queue)
+
+static int _xdp_eth_get_queue(const char *ifname, struct eth_channels *channel)
 {
-    struct eth_channels channel;
     struct ifreq ifr;
     int     ret = -1;
     int     fd;
@@ -56,8 +56,8 @@ int xdp_eth_get_queue(const char *ifname, int *max_queue, int *curr_queue)
         return -1;
     }
 
-    channel.cmd = ETHTOOL_GCHANNELS;
-    ifr.ifr_data = (void *)&channel;
+    channel->cmd = ETHTOOL_GCHANNELS;
+    ifr.ifr_data = (void *)channel;
     snprintf(ifr.ifr_name, IF_NAMESIZE, "%s", ifname);
     ret = ioctl(fd, SIOCETHTOOL, &ifr);
     if (ret < 0) {
@@ -67,7 +67,19 @@ int xdp_eth_get_queue(const char *ifname, int *max_queue, int *curr_queue)
         }
         ret = 0;
     }
+out:
+    close(fd);
+    return ret;
+}
 
+int xdp_eth_get_queue(const char *ifname, int *max_queue, int *curr_queue)
+{
+    struct eth_channels channel;
+    int ret;
+    ret = _xdp_eth_get_queue(ifname, &channel);
+    if (ret < 0) {
+        goto out;
+    }
     if (channel.max_combined == 0 || errno == EOPNOTSUPP) {
         channel.max_combined = 1;
         channel.combined_count = 1;
@@ -83,7 +95,6 @@ int xdp_eth_get_queue(const char *ifname, int *max_queue, int *curr_queue)
     ret = 0;
 
 out:
-    close(fd);
     return ret;
 }
 
@@ -94,6 +105,10 @@ int xdp_eth_set_queue(const char *ifname, int queue)
     int     ret = -1;
     int     fd;
 
+    ret = _xdp_eth_get_queue(ifname, &channel);
+    if (ret < 0) {
+        return -1;
+    }
     fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd < 0) {
         ERR_OUT("create socket failed, err %d", errno);
@@ -106,7 +121,7 @@ int xdp_eth_set_queue(const char *ifname, int queue)
     snprintf(ifr.ifr_name, IF_NAMESIZE, "%s", ifname);
     ret = ioctl(fd, SIOCETHTOOL, &ifr);
     if (ret < 0) {
-        ERR_OUT("ioctl for get channels failed, err %d", errno);
+        ERR_OUT("ioctl for set channels failed, err %d", errno);
         goto out;
     }
     ret = 0;
