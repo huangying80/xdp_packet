@@ -9,5 +9,25 @@ huangying, email: hy_gzr@163.com
 同时非常感谢dpdk提供的支持和参考以及宝贵的系统经验！
 
 #### 修改历史：
-**已经移动到Changelog.md**
-**目前为初步调试阶段**
+  **已经移动到Changelog.md**<br>
+**目前为初步调试阶段,developing分支为正在调试及开发的分支**<br>
+#### 当前问题：
+  * 调用fgets时出现段错误，这个问题比较奇怪，至今没找到原因,栈信息如下, 目前怀疑是内存出现越界或覆盖的问题
+  ```
+  (gdb) bt
+#0  0x00007fac44dcf2f0 in _int_malloc () from /lib64/libc.so.6
+#1  0x00007fac44dd02be in malloc () from /lib64/libc.so.6
+#2  0x00007fac44dbaab0 in _IO_file_doallocate () from /lib64/libc.so.6
+#3  0x00007fac44dc8c60 in _IO_doallocbuf () from /lib64/libc.so.6
+#4  0x00007fac44dc7c84 in __GI__IO_file_underflow () from /lib64/libc.so.6
+#5  0x00007fac44dc8d16 in _IO_default_uflow () from /lib64/libc.so.6
+#6  0x00007fac44dbc37a in _IO_getline_info () from /lib64/libc.so.6
+#7  0x00007fac44dbb37f in fgets () from /lib64/libc.so.6
+#8  0x000000000041ac23 in xdp_parse_cpu_id (val=<synthetic pointer>, filename=0x7fffdbb8ce30 "/sys/devices/system/cpu/cpu0/topology/core_id")
+    at xdp_worker.c:365
+#9  xdp_cpu_core_id (core_id=core_id@entry=0) at xdp_worker.c:347
+#10 0x000000000041adde in xdp_workers_init () at xdp_worker.c:76
+#11 0x00000000004193f3 in xdp_runtime_setup_workers (runtime=0x7fffdbb8df80, worker_func=0x404e74 <DnsProcess::worker(void volatile*)>, 
+    worker_count=1) at xdp_runtime.c:177
+#12 0x0000000000404713 in main (argc=9, argv=0x7fffdbb8e0e8) at main.cpp:76
+  ```
