@@ -52,7 +52,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "argument error !\n");
         return -1;
     }
->>>>>>> eb97b0cf19606a1378b84582c513343530195753
     ret = xdp_runtime_init(&runtime, eth, prog, NULL);
     if (ret < 0) {
         fprintf(stderr, "xdp_runtime_init failed with %s\n", eth);
