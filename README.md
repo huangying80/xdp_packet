@@ -32,4 +32,4 @@ huangying, email: hy_gzr@163.com
 #12 0x0000000000404713 in main (argc=9, argv=0x7fffdbb8e0e8) at main.cpp:76
   ```
 经过几天的时间此问题终于解决，又是因为一个低级错误造成的内存越界
-具体是在xdp_frame.c文件中的xdp_framepool_create中给frame_list分配的空间是sizeof(struct xdp_frame * ),但在访问frame_list的时候是按sizeof(struct xdp_frame * ) * ring_size进行地址访问的，所以造成了内存越界，被覆盖的内存正好是fgets中被使用了，所以造成在调用fgets时出现段错误
+具体是在xdp_framepool.c文件中的xdp_framepool_create中给frame_list分配的空间是sizeof(struct xdp_frame * ),但在访问frame_list的时候是按sizeof(struct xdp_frame * ) * ring_size进行地址访问的，所以造成了内存越界，被覆盖的内存正好是fgets中被使用了，所以造成在调用fgets时出现段错误
