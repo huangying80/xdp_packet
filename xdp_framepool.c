@@ -7,6 +7,7 @@
 #include "xdp_mempool.h"
 #include "xdp_ring.h"
 #include "xdp_framepool.h"
+#include "xdp_dev.h"
 
 #define XDP_FRAMEPOOL_HDR_SIZE(s, l) \
 l = xdp_align_pow2_32(l);    \
@@ -76,7 +77,7 @@ xdp_framepool_create(struct xdp_mempool *pool, uint32_t len,
     if (!addr) {
         return NULL;
     }
-    frame_list = malloc(sizeof(struct xdp_frame *));
+    frame_list = malloc(sizeof(struct xdp_frame *) * ring_size);
     switch (ring_size % 8) {
         case 0:
             while (i != ring_size) {

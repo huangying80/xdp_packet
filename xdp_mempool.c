@@ -74,7 +74,7 @@ void *xdp_mempool_alloc(struct xdp_mempool *pool, size_t size, size_t align)
         addr = (void *)XDP_ALIGN((uintptr_t)addr, align);
     } 
 
-    if (pool->end - pool->last < size) {
+    if (pool->end - addr < size) {
         ERR_OUT("aligned addr memory is not enough for size %lu", size);
         return NULL;
     }

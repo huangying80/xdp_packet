@@ -275,11 +275,6 @@ static void *xdp_worker_loop(__attribute__((unused)) void *arg)
     if (worker_id == XDP_MAX_WORKER) {
         XDP_PANIC("can not get worker id");
     }
-    if (!xdp_workers[worker_id].worker_func) {
-        XDP_PANIC("worker function is NULL");
-    }
-    func = xdp_workers[worker_id].worker_func;
-    args = xdp_workers[worker_id].worker_arg;
 
     ret = pthread_setaffinity_np(thread_id, sizeof(cpu_set_t),
         &xdp_workers[worker_id].cpu_set);
@@ -297,6 +292,11 @@ static void *xdp_worker_loop(__attribute__((unused)) void *arg)
             XDP_PANIC("read notify failed, err %d", errno);
         }
 
+        if (!xdp_workers[worker_id].worker_func) {
+            XDP_PANIC("worker function is NULL");
+        }
+        func = xdp_workers[worker_id].worker_func;
+        args = xdp_workers[worker_id].worker_arg;
         xdp_workers[worker_id].state = RUNNING;
         n = 0;
         while (n == 0 || (n < 0 && errno == EINTR)) {

@@ -39,7 +39,7 @@ xdp_runtime_init(struct xdp_runtime *runtime,
     const char *prog,
     const char *sec)
 {
-    int ret;
+    int ret = 0;
    
     runtime->fill_size = XDP_RUNTIME_FILL_SIZE;
     runtime->comp_size = XDP_RUNTIME_COMP_SIZE;

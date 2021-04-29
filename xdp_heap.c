@@ -46,7 +46,6 @@ xdp_heap_reserve(int node, size_t size, __attribute__((unused))void *data)
     void   *addr = NULL;
 
     reserve_size = (size_t)XDP_ALIGN(size + sizeof(struct xdp_mempool), XDP_PAGESIZE);
-    //reserve_size = 1 << 30;
     addr = mmap(NULL, reserve_size, PROT_READ|PROT_WRITE,
         MAP_ANONYMOUS | MAP_SHARED, -1, 0);
     if (!addr || addr == MAP_FAILED) {
