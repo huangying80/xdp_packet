@@ -42,3 +42,5 @@ huangying-c, email: hy_gzr@163.com
   * 修改了xdp_prog.c文件，在xdp_prog_init中如果prog已经加载时返回错误
   * 修改了xdp_ring.c文件，调整了判断队列长度是否为2的幂的方式
   * 修改了xdp_sock.c文件，修复了为fill_queue分配缓存时，对返回值的错误的判断的问题
+ * 2021-04-29:<br>
+  * 解决了调用fgets时出现段错误的问题，原因是因为frame_list分配了sizeof(struct xdp_frame * ) 的大小，但实际使用时使用了sizeof(struct xdp_frame * ) * ring_size大小的空间造成了内存越界
