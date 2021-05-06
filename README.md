@@ -33,3 +33,4 @@ huangying, email: hy_gzr@163.com
   ```
 经过几天的时间此问题终于解决，又是因为一个低级错误造成的内存越界
 具体是在xdp_framepool.c文件中的xdp_framepool_create中给frame_list分配的空间是sizeof(struct xdp_frame * ),但在访问frame_list的时候是按sizeof(struct xdp_frame * ) * ring_size进行地址访问的，所以造成了内存越界，被覆盖的内存正好是fgets中被使用了，所以造成在调用fgets时出现段错误
+  * XDP_USE_NEED_WAKEUP标记没起作用，目前还没确定问题，正在调试中
