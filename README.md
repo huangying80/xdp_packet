@@ -34,9 +34,9 @@ huangying, email: hy_gzr@163.com
 经过几天的时间此问题终于解决，又是因为一个低级错误造成的内存越界
 具体是在xdp_framepool.c文件中的xdp_framepool_create中给frame_list分配的空间是sizeof(struct xdp_frame * ),但在访问frame_list的时候是按sizeof(struct xdp_frame * ) * ring_size进行地址访问的，所以造成了内存越界，被覆盖的内存正好是fgets中被使用了，所以造成在调用fgets时出现段错误
   * XDP_USE_NEED_WAKEUP标记没起作用，目前还没确定问题，正在调试中
-    通过分析内核中ixgbe驱动的源码（开发环境内核5.9.1，测试网卡ixgbe）
-    收包流程大致为ixgbe_poll -> ixgbe_clean_rx_irq_zc
-    ixgbe_clean_rx_irq_zc中相关代码片段如下(省略其他不相关的代码)
+    通过分析内核中ixgbe驱动的源码（开发环境内核5.9.1，测试网卡ixgbe）</br>
+    收包流程大致为ixgbe_poll -> ixgbe_clean_rx_irq_zc</br>
+    ixgbe_clean_rx_irq_zc中相关代码片段如下(省略其他不相关的代码)</br>
     涉及文件：</br>
     drivers/net/ethernet/intel/ixgbe/ixgbe_main.c</br>
     drivers/net/ethernet/intel/ixgbe/ixgbe_xsk.c</br>
@@ -62,7 +62,7 @@ huangying, email: hy_gzr@163.com
     1. 当分配接收缓存失败时会判断是否设置了rx_ring->xsk_umem中的wakeup标记
     2. 即使在rx_ring->xsk_umem中设置了wakeup标记，当分配接收缓存成功后也会清除
     结论是：在分配接收缓存失败时，wakeup才会有效，而且在下次分配成功后会被清除掉，只有wakeup在内核中被设置，在用户代码中的xsk_ring_prod__needs_wakeup才会返回true</br></br>
-  * struct xdp_desc * desc中的字段addr通过调用xsk_umem__extract_addr（）可以确定得到的是在umem中的偏移量，但调用xsk_umem__extract_offset（）得到的这个offset代表是什么意思没有搞清楚
+  * struct xdp_desc * desc中的字段addr通过调用xsk_umem__extract_addr（）可以确定得到的是在umem中的偏移量，但调用xsk_umem__extract_offset（）得到的这个offset代表是什么意思没有搞清楚</br>
     通过分析内核中网卡驱动的源码得知收报逻辑有如下流程</br>
     ixgbe_poll -> ixgbe_clean_rx_irq_zc -> ixgbe_run_xdp_zc -> xdp_do_redirect -> \__bpf_tx_xdp_map -> \__xsk_map_redirect -> xsk_rcv ->
     \__xsk_rcv_zc -> xp_get_handle</br>
