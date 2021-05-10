@@ -34,4 +34,57 @@ huangying, email: hy_gzr@163.com
 经过几天的时间此问题终于解决，又是因为一个低级错误造成的内存越界
 具体是在xdp_framepool.c文件中的xdp_framepool_create中给frame_list分配的空间是sizeof(struct xdp_frame * ),但在访问frame_list的时候是按sizeof(struct xdp_frame * ) * ring_size进行地址访问的，所以造成了内存越界，被覆盖的内存正好是fgets中被使用了，所以造成在调用fgets时出现段错误
   * XDP_USE_NEED_WAKEUP标记没起作用，目前还没确定问题，正在调试中
+    通过分析内核中ixgbe驱动的源码（开发环境内核5.9.1，测试网卡ixgbe）
+    收包流程大致为ixgbe_poll -> ixgbe_clean_rx_irq_zc
+    ixgbe_clean_rx_irq_zc中相关代码片段如下(省略其他不相关的代码)
+    涉及文件：</br>
+    drivers/net/ethernet/intel/ixgbe/ixgbe_main.c</br>
+    drivers/net/ethernet/intel/ixgbe/ixgbe_xsk.c</br>
+    代码：</br>
+    ```
+    if (cleaned_count >= IXGBE_RX_BUFFER_WRITE) {
+        failure = failure ||
+                  !ixgbe_alloc_rx_buffers_zc(rx_ring,
+                                 cleaned_count);
+            cleaned_count = 0;
+        }
+     ..........
+     if (xsk_umem_uses_need_wakeup(rx_ring->xsk_umem)) {
+        if (failure || rx_ring->next_to_clean == rx_ring->next_to_use)
+            xsk_set_rx_need_wakeup(rx_ring->xsk_umem);
+        else
+            xsk_clear_rx_need_wakeup(rx_ring->xsk_umem);
+
+        return (int)total_rx_packets;
+    }
+    ```
+    得到两个信息
+    1. 当分配接收缓存失败时会判断是否设置了rx_ring->xsk_umem中的wakeup标记
+    2. 即使在rx_ring->xsk_umem中设置了wakeup标记，当分配接收缓存成功后也会清除
+    结论是：在分配接收缓存失败时，wakeup才会有效，而且在下次分配成功后会被清除掉，只有wakeup在内核中被设置，在用户代码中的xsk_ring_prod__needs_wakeup才会返回true</br></br>
   * struct xdp_desc * desc中的字段addr通过调用xsk_umem__extract_addr（）可以确定得到的是在umem中的偏移量，但调用xsk_umem__extract_offset（）得到的这个offset代表是什么意思没有搞清楚
+    通过分析内核中网卡驱动的源码得知收报逻辑有如下流程</br>
+    ixgbe_poll -> ixgbe_clean_rx_irq_zc -> ixgbe_run_xdp_zc -> xdp_do_redirect -> \__bpf_tx_xdp_map -> \__xsk_map_redirect -> xsk_rcv ->
+    \__xsk_rcv_zc -> xp_get_handle</br>
+    涉及文件:</br>
+    drivers/net/ethernet/intel/ixgbe/ixgbe_main.c</br>
+    drivers/net/ethernet/intel/ixgbe/ixgbe_xsk.c</br>
+    net/core/filter.c</br>
+    net/xdp/xsk.c</br>
+    xp_get_handle代码</br>
+    ```
+    static u64 xp_get_handle(struct xdp_buff_xsk *xskb)
+    {
+      u64 offset = xskb->xdp.data - xskb->xdp.data_hard_start;
+
+      offset += xskb->pool->headroom;
+      if (!xskb->pool->unaligned)
+          return xskb->orig_addr + offset;
+      return xskb->orig_addr + (offset << XSK_UNALIGNED_BUF_OFFSET_SHIFT);
+    }
+    ```
+    结论：offset为数据包内存空间的起始地址减去实际数据的起始地址再加上headroom。</br>
+    实际数据包实际的起始地址是指有效的数据开始，</br>
+    数据包内存空间的起始地址是指用来存储数据包的内存空间首地址，</br>
+    这两个的地址是不同的，留出这段空间是为了方便实现类似ip隧道之类的封装和解封装使用的。</br>
+    至于headroom则是用户空间代码中设置的便宜量。
