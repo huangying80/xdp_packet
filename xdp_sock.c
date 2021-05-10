@@ -7,6 +7,7 @@
 
 #include "xsk.h"
 #include "linux/if_link.h"
+#include "linux/if_xdp.h"
 
 #include "xdp_sock.h"
 #include "xdp_log.h"
@@ -65,7 +66,7 @@ xdp_sock_configure(struct xdp_iface *iface,
 
     //for zc
     n = xdp_framepool_get_frame(rxq->framepool, fq_bufs, reserve_size);
-    if (!n) {
+    if (!n || n != reserve_size) {
         ERR_OUT("xdp_framepool_get_frame faield for rxq %d", rxq->queue_index);
         goto out;
     }
@@ -112,7 +113,7 @@ xdp_sock_rx_zc(struct xdp_rx_queue *rxq, struct xdp_frame **bufs,
     }
     rcvd = xsk_ring_cons__peek(rx, n, &index);    
     if (!rcvd) {
-#ifdef XDP_USE_NEED_WAKEUP
+#if defined(XDP_USE_NEED_WAKEUP)
         if (xsk_ring_prod__needs_wakeup(&umem->fq)) {
             poll(rxq->fds, 1, 500);
         }
@@ -126,8 +127,8 @@ xdp_sock_rx_zc(struct xdp_rx_queue *rxq, struct xdp_frame **bufs,
         len = desc->len;
         offset = xsk_umem__extract_offset(addr);
         addr = xsk_umem__extract_addr(addr);
-        bufs[i]->addr = xsk_umem__get_data(umem->buffer, addr);
-        bufs[i]->data_off = offset;
+        bufs[i] = (struct xdp_frame *) xsk_umem__get_data(umem->buffer, addr);
+        bufs[i]->data_off = offset - sizeof(struct xdp_frame);
         bufs[i]->data_len = len;
     }
 
@@ -169,8 +170,8 @@ xdp_sock_tx_zc(struct xdp_tx_queue *txq, struct xdp_frame **bufs,
         }
         desc = xsk_ring_prod__tx_desc(&txq->tx, index);
         desc->len = frame->data_len;
-        addr = frame->addr - umem->buffer;
-        offset = frame->data_off << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+        addr = (void *)frame - umem->buffer;
+        offset = (frame->data_off + sizeof(struct xdp_frame)) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
         desc->addr = addr | offset;
         count++;
     }
@@ -233,8 +234,7 @@ static void xdp_sock_pull_umem_cq(struct xdp_umem_info *umem, uint32_t size)
     for (i = 0; i < n; i++) {
         addr = *xsk_ring_cons__comp_addr(cq, index++);
         addr = xsk_umem__extract_addr(addr);
-        frame = xdp_framepool_addr_to_frame(umem->framepool,
-            xsk_umem__get_data(umem->buffer, addr));
+        frame = xsk_umem__get_data(umem->buffer, addr);
         xdp_framepool_free_frame(frame);
     }
 
@@ -282,7 +282,7 @@ xdp_sock_reserve_fq_zc(struct xdp_umem_info *umem, uint16_t reserve_size,
 
     for (i = 0; i < reserve_size; i++) {
         fq_addr = xsk_ring_prod__fill_addr(fq, index++);
-        addr = bufs[i]->addr - umem->buffer;
+        addr = (void *)bufs[i] - umem->buffer;
         *fq_addr = addr;
     }
     xsk_ring_prod__submit(fq, reserve_size);

@@ -24,9 +24,7 @@
 #define XDP_SOCK_END    char _license[] SEC("license") = "GPL";
 
 
-#ifndef MAX_STATIS_NUM
-#define MAX_STATIS_NUM (XDP_REDIRECT + 1)
-#endif
+#define XDP_NOSET (XDP_REDIRECT + 1)
 
 #ifndef MAX_PORT_NUM
 #define MAX_PORT_NUM (1024)
@@ -80,10 +78,11 @@ XDP_ACTION_DEFINE(layer3)
     
     cur->pos = eth + 1;
     cur->l3_proto = bpf_ntohs(eth->h_proto);
+    pdebug("l3_proto %04X\n", cur->l3_proto);
     key = eth->h_proto;
     action = bpf_map_lookup_elem(MAP_REF(layer3), &key);
     if (!action) {
-        return XDP_PASS;
+        return XDP_NOSET;
     }
     return *action;
 }
@@ -99,13 +98,23 @@ MAP_DEFINE(ipv4_src) = MAP_INIT_NO_PREALLOC (
     sizeof(__u32),
     MAX_LPM_IPV4_NUM
 );
-XDP_ACTION_DEFINE(ipv4_src)
+MAP_DEFINE(ipv4_dst) = MAP_INIT_NO_PREALLOC ( 
+    BPF_MAP_TYPE_LPM_TRIE,
+    8,
+    sizeof(__u32),
+    MAX_LPM_IPV4_NUM
+);
+
+XDP_ACTION_DEFINE(ipv4)
 {
     int           hdrsize;
-    __u32        *action;
     __be32        src_ip = 0;
-    struct iphdr *iph = cur->pos;
-    union  ipv4_key key;
+    __be32        dst_ip = 0;
+    __u32         ret = XDP_NOSET;
+    __u32        *action;
+
+    struct iphdr       *iph = cur->pos;
+    union ipv4_key      key;
 
     if (iph + 1 > (struct iphdr *)data_end) {
         pdebug("ipv4 xdp aborted\n");
@@ -122,8 +131,7 @@ XDP_ACTION_DEFINE(ipv4_src)
         pdebug("ipv4 xdp aborted\n");
         return XDP_ABORTED;
     }
-    cur->pos += hdrsize;
-    cur->l4_proto = iph->protocol;
+
     src_ip = iph->saddr;
     key.b32[0] = 32;
     key.b8[4] = src_ip & 0xff;
@@ -131,45 +139,12 @@ XDP_ACTION_DEFINE(ipv4_src)
     key.b8[6] = (src_ip >> 16) & 0xff;
     key.b8[7] = (src_ip >> 24) & 0xff;
     action = bpf_map_lookup_elem(MAP_REF(ipv4_src), &key);
-    if (!action) {
-        pdebug("ipv4 src xdp pass\n");
-        return XDP_PASS;
+    if (action) {
+        ret = *action;
+        pdebug("ip src action %u\n", ret);
+        goto out;
     }
 
-    return *action;
-}
-
-MAP_DEFINE(ipv4_dst) = MAP_INIT_NO_PREALLOC ( 
-    BPF_MAP_TYPE_LPM_TRIE,
-    8,
-    sizeof(__u32),
-    MAX_LPM_IPV4_NUM
-);
-XDP_ACTION_DEFINE(ipv4_dst)
-{
-    int           hdrsize;
-    __u32        *action;
-    __be32        dst_ip = 0;
-    struct iphdr *iph = cur->pos;
-    union  ipv4_key key;
-
-    if (iph + 1 > (struct iphdr *)data_end) {
-        pdebug("ipv4 xdp aborted\n");
-        return XDP_ABORTED;
-    }
-
-    hdrsize = iph->ihl * 4;
-    if(hdrsize < sizeof(struct iphdr)) {
-        pdebug("ipv4 xdp aborted\n");
-        return XDP_ABORTED;
-    }
-
-    if (cur->pos + hdrsize > data_end) {
-        pdebug("ipv4 xdp aborted\n");
-        return XDP_ABORTED;
-    }
-    cur->pos += hdrsize;
-    cur->l4_proto = iph->protocol;
     dst_ip = iph->daddr;
     key.b32[0] = 32;
     key.b8[4] = dst_ip & 0xff;
@@ -177,14 +152,20 @@ XDP_ACTION_DEFINE(ipv4_dst)
     key.b8[6] = (dst_ip >> 16) & 0xff;
     key.b8[7] = (dst_ip >> 24) & 0xff;
     action = bpf_map_lookup_elem(MAP_REF(ipv4_dst), &key);
-    if (!action) {
-        pdebug("ipv4 src xdp pass\n");
-        return XDP_PASS;
+    if (action) {
+        ret = *action;
     }
 
-    return *action;
+out:
+    cur->pos += hdrsize;
+    cur->l4_proto = iph->protocol;
+    return ret;
 }
 
+struct key6 {
+        __u32 prefixlen;
+        struct in6_addr ipv6_addr;
+};
 
 MAP_DEFINE(ipv6_src) = MAP_INIT_NO_PREALLOC (
     BPF_MAP_TYPE_LPM_TRIE,
@@ -192,64 +173,44 @@ MAP_DEFINE(ipv6_src) = MAP_INIT_NO_PREALLOC (
     sizeof(__u32),
     MAX_LPM_IPV6_NUM
 );
-XDP_ACTION_DEFINE(ipv6_src)
-{
-    struct ipv6hdr *ip6h = cur->pos;
-    __u32          *action;
-
-    if (ip6h + 1 > (struct ipv6hdr*)data_end) {
-        pdebug("ipv6 src xdp aborted\n");
-        return XDP_ABORTED;
-    }
-    cur->pos = ip6h + 1;
-    cur->l4_proto = ip6h->nexthdr;
-    struct {
-        __u32 prefixlen;
-        struct in6_addr ipv6_addr;
-    }key6 = {
-        .prefixlen = 128,
-        .ipv6_addr = ip6h->saddr
-    };
-    action = bpf_map_lookup_elem(MAP_REF(ipv6_src), &key6);
-    if (!action) {
-        pdebug("ipv6 src xdp pass\n");
-        return XDP_PASS;
-    }
-
-    return *action;
-}
-
 MAP_DEFINE(ipv6_dst) = MAP_INIT_NO_PREALLOC (
     BPF_MAP_TYPE_LPM_TRIE,
     20,
     sizeof(__u32),
     MAX_LPM_IPV6_NUM
 );
-XDP_ACTION_DEFINE(ipv6_dst)
+XDP_ACTION_DEFINE(ipv6)
 {
-    struct ipv6hdr *ip6h = cur->pos;
-    __u32          *action;
+    __u32    ret = XDP_NOSET;
+    __u32   *action;
 
-    if (ip6h + 1 > (struct ipv6hdr*)data_end) {
+    struct key6     key;
+    struct ipv6hdr *ip6h = cur->pos;
+
+    if (ip6h + 1 > (struct ipv6hdr *)data_end) {
         pdebug("ipv6 src xdp aborted\n");
         return XDP_ABORTED;
     }
-    cur->pos = ip6h + 1;
-    cur->l4_proto = ip6h->nexthdr;
-    struct {
-        __u32 prefixlen;
-        struct in6_addr ipv6_addr;
-    }key6 = {
-        .prefixlen = 128,
-        .ipv6_addr = ip6h->daddr
-    };
-    action = bpf_map_lookup_elem(MAP_REF(ipv6_dst), &key6);
-    if (!action) {
-        pdebug("ipv6 src xdp pass\n");
-        return XDP_PASS;
+
+    key.prefixlen = 128,
+    key.ipv6_addr = ip6h->saddr;
+    action = bpf_map_lookup_elem(MAP_REF(ipv6_src), &key);
+    if (action) {
+        ret = *action;
+        goto out;
     }
 
-    return *action;
+    key.prefixlen = 128,
+    key.ipv6_addr = ip6h->daddr;
+    action = bpf_map_lookup_elem(MAP_REF(ipv6_dst), &key);
+    if (action) {
+        ret = *action;
+    }
+
+out:
+    cur->pos = ip6h + 1;
+    cur->l4_proto = ip6h->nexthdr;
+    return ret;
 }
 
 
@@ -267,7 +228,7 @@ XDP_ACTION_DEFINE(layer4) //check tcp or udp
     key = cur->l4_proto;
     action = bpf_map_lookup_elem(MAP_REF(layer4), &key);
     if (!action) {
-        return XDP_PASS;
+        return XDP_NOSET;
     }
     return *action;
 }
@@ -305,7 +266,7 @@ XDP_ACTION_DEFINE(tcp_port)
     cur->port = h->dest;
     action = bpf_map_lookup_elem(MAP_REF(tcp_port), &cur->port);
     if (!action) {
-        return XDP_PASS;
+        return XDP_NOSET;
     }
     return *action;
 }
@@ -338,7 +299,7 @@ XDP_ACTION_DEFINE(udp_port)
     cur->port = h->dest;
     action = bpf_map_lookup_elem(MAP_REF(udp_port), &cur->port);
     if (!action) {
-        return XDP_PASS;
+        return XDP_NOSET;
     }
     return *action;
 }
@@ -347,8 +308,6 @@ XDP_SOCK_START
 int xdp_sock_main(struct xdp_md *ctx)
 {
     __u32  action = XDP_PASS;
-    __u32  action_src = XDP_PASS;
-    __u32  action_dst = XDP_PASS;
     int   *value;
     int    index;
 
@@ -361,75 +320,32 @@ int xdp_sock_main(struct xdp_md *ctx)
     cursor.pos = data;
     cursor.size = data_end - data;
     cur = &cursor;
-    
+    pdebug("get a packet queue %d\n", ctx->rx_queue_index); 
     action = CALL_ACTION(layer3);
-    if (action == XDP_REDIRECT) {
-        index = ctx->rx_queue_index;
-        value = bpf_map_lookup_elem(XSKS_MAP_REF, &index);
-        if (!value) {
-            perror("oops, no queue matched for %d in layer3", cur->l3_proto);
-            return XDP_ABORTED;
-        }
-        return bpf_redirect_map(XSKS_MAP_REF, index, 0);
-    }
-    if (action != XDP_PASS) {
+    pdebug("layer3 action %u, queue %d\n", action, ctx->rx_queue_index); 
+    if (action != XDP_NOSET) {
         goto out;
     }
 
     switch(cur->l3_proto) {
         case ETH_P_IP:
-            action_src = CALL_ACTION(ipv4_src);
-            if (action_src == XDP_DROP || action_src == XDP_ABORTED) {
-                goto out;
-            }
-            action_dst = CALL_ACTION(ipv4_dst);
-            if (action_dst == XDP_DROP || action_dst == XDP_ABORTED) {
-                goto out;
-            }
+            action = CALL_ACTION(ipv4);
             break;
         case ETH_P_IPV6:
-            action_src = CALL_ACTION(ipv6_src);
-            if (action_src == XDP_DROP || action_src == XDP_ABORTED) {
-                goto out;
-            }
-            action_dst = CALL_ACTION(ipv6_dst);
-            if (action_dst == XDP_DROP || action_dst == XDP_ABORTED) {
-                goto out;
-            }
+            action = CALL_ACTION(ipv6);
             break;
         default:
-            action_src = XDP_PASS;
-            action_dst = XDP_PASS;
+            action = XDP_PASS;
             break;
     }
-    if (action_dst == XDP_REDIRECT || action_src == XDP_REDIRECT) {
-        action = XDP_REDIRECT;
-    }
-    if (action == XDP_REDIRECT) {
-        index = ctx->rx_queue_index;
-        value = bpf_map_lookup_elem(XSKS_MAP_REF, &index);
-        if (!value) {
-            perror("oops, no queue matched for %d", cur->l3_proto);
-            return XDP_ABORTED;
-        }
-        return bpf_redirect_map(XSKS_MAP_REF, index, 0);
-    }
-    if (action != XDP_PASS) {
+    pdebug("ip action %u, queue %d\n", action, ctx->rx_queue_index);
+    if (action != XDP_NOSET) {
         goto out;
     }
 
     action = CALL_ACTION(layer4);
-    if (action == XDP_REDIRECT) {
-        index = ctx->rx_queue_index;
-        value = bpf_map_lookup_elem(XSKS_MAP_REF, &index);
-        if (!value) {
-            perror("oops, no queue matched for %d in layer4", cur->l4_proto);
-            return XDP_ABORTED;
-        }
-        return bpf_redirect_map(XSKS_MAP_REF, index, 0);
-    }
-    
-    if (action != XDP_PASS) {
+    pdebug("layer 4 action, queue %d\n", action, ctx->rx_queue_index); 
+    if (action != XDP_NOSET) {
         goto out;
     }
     switch (cur->l4_proto) {
@@ -443,18 +359,23 @@ int xdp_sock_main(struct xdp_md *ctx)
             action = XDP_PASS;
             break;
     }
+    pdebug("port action %u, queue %d\n", action, ctx->rx_queue_index); 
+
+out:
     if (action == XDP_REDIRECT) {
         index = ctx->rx_queue_index;
         value = bpf_map_lookup_elem(XSKS_MAP_REF, &index);
         if (!value) {
-            perror("oops, no queue matched for port %u in layer3 %u layer4 %u",
+            perror("oops, no queue matched for port %u in layer3 %04X layer4 %04X",
                 bpf_ntohs(cur->port), cur->l3_proto, cur->l4_proto);
             return XDP_ABORTED;
         }
-        return bpf_redirect_map(XSKS_MAP_REF, index, 0);
+        action = bpf_redirect_map(XSKS_MAP_REF, index, 0);
     }
 
-out:
+    pdebug("final action %u----", action);
+    pdebug("----port %u in layer3 %04X layer4 %04X",
+        bpf_ntohs(cur->port), cur->l3_proto, cur->l4_proto);
     return action;
 }
 XDP_SOCK_END

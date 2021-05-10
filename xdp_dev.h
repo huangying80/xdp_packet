@@ -18,6 +18,15 @@ struct xdp_dev_info {
 
 };
 
+/*
+struct xdp_umem_info {
+    struct xsk_ring_prod     fq;
+    struct xsk_ring_cons     cq;
+    struct xsk_umem         *umem;
+    struct xdp_framepool    *framepool;
+    void                    *buffer;
+} XDP_CACHE_ALIGN;
+*/
 struct xdp_umem_info {
     struct xdp_framepool    *framepool;
     struct xsk_umem         *umem;
