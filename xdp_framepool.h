@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 #define xdp_frame_get_addr_offset(p, t, o) \
-    ((t)(((uint8_t *)(p)->addr) + (p)->data_off + (o)))
+    ((t)((uint8_t *)(p) + (p)->data_off + (o)))
 #define xdp_frame_get_addr(p, t) \
     xdp_frame_get_addr_offset(p, t, 0)
 
@@ -20,16 +20,14 @@ struct xdp_frame {
     struct xdp_framepool *fpool;
     off_t    data_off;
     size_t   data_len;
-    void    *addr;
 } XDP_CACHE_ALIGN;
 
 struct xdp_framepool {
     uint32_t            frame_size;
     uint32_t            frame_headroom;
     struct xdp_ring    *ring;
-    void               *base_addr;
     size_t              count;
-    struct xdp_frame    frame[0];
+    void               *base_addr;
 } XDP_CACHE_ALIGN;
 
 struct xdp_frame *xdp_framepool_addr_to_frame(

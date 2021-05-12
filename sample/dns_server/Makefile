@@ -1,6 +1,6 @@
 CC := g++
 DEBUG := -g
-LIB := -lpthread 
+LIB := -lpthread -lz 
 SRC := $(wildcard *.cpp)
 OBJ := $(SRC:%.cpp=%.o)
 XDP_PACKET_LIB := ../../libxdppacket.a
