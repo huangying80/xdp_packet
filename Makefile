@@ -16,8 +16,8 @@ XDP_PACKET_SRC := $(wildcard *.c)
 XDP_PACKET_OBJ := $(XDP_PACKET_SRC:%.c=%.o)
 XDP_PACKET_TARGET := libxdppacket.a
 
-LIBBPF_LIB := -Wl,--whole-archive ./libbpf/src/libbpf.a -Wl,--no-whole-archive -lelf -lz
-LIBBPF_INCLUDE := -I./ -I./libbpf/src -I./libbpf/include/uapi -I./libbpf/src/build/usr/include
+LIBBPF_LIB := -Wl,--whole-archive ./libbpf-0.3/src/libbpf.a -Wl,--no-whole-archive -lelf -lz
+LIBBPF_INCLUDE := -I./ -I./libbpf-0.3/src -I./libbpf-0.3/include/uapi -I./libbpf-0.3/src/build/usr/include
 
 all: static prog
 

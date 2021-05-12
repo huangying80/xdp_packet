@@ -4,10 +4,12 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <linux/if_ether.h>
 
 #include "xsk.h"
 #include "linux/if_link.h"
 #include "linux/if_xdp.h"
+#include "bpf_endian.h"
 
 #include "xdp_sock.h"
 #include "xdp_log.h"
@@ -70,6 +72,7 @@ xdp_sock_configure(struct xdp_iface *iface,
         ERR_OUT("xdp_framepool_get_frame faield for rxq %d", rxq->queue_index);
         goto out;
     }
+
     ret = xdp_sock_reserve_fq_zc(rxq->umem, n, fq_bufs);
     if (ret < 0) {
         ERR_OUT("xdp_socket_reserve_fq_zc faield for rxq %d", rxq->queue_index);
@@ -94,12 +97,11 @@ xdp_sock_rx_zc(struct xdp_rx_queue *rxq, struct xdp_frame **bufs,
     struct xdp_umem_info  *umem = rxq->umem;
     struct xdp_frame      *fq_bufs[XDP_SOCK_RX_BATCH_SIZE];
     const struct xdp_desc *desc;
-    uint64_t    addr;
-    uint64_t    offset;
-    uint32_t    len;
     uint32_t    index = 0;
     uint32_t    n;
     uint16_t    frame_n = 0;
+    uint64_t    offset;
+    uint64_t    addr;
     int         rcvd;
     int         i;
     
@@ -111,6 +113,7 @@ xdp_sock_rx_zc(struct xdp_rx_queue *rxq, struct xdp_frame **bufs,
     if (!n) {
         return -1;
     }
+
     rcvd = xsk_ring_cons__peek(rx, n, &index);    
     if (!rcvd) {
 #if defined(XDP_USE_NEED_WAKEUP)
@@ -123,13 +126,11 @@ xdp_sock_rx_zc(struct xdp_rx_queue *rxq, struct xdp_frame **bufs,
 
     for (i = 0; i < rcvd; i++) {
         desc = xsk_ring_cons__rx_desc(rx, index++);
-        addr = desc->addr;
-        len = desc->len;
-        offset = xsk_umem__extract_offset(addr);
-        addr = xsk_umem__extract_addr(addr);
+        offset = xsk_umem__extract_offset(desc->addr);
+        addr = xsk_umem__extract_addr(desc->addr);
         bufs[i] = (struct xdp_frame *) xsk_umem__get_data(umem->buffer, addr);
-        bufs[i]->data_off = offset - sizeof(struct xdp_frame);
-        bufs[i]->data_len = len;
+        bufs[i]->data_off = offset;
+        bufs[i]->data_len = desc->len;
     }
 
     xsk_ring_cons__release(rx, rcvd);
@@ -171,7 +172,7 @@ xdp_sock_tx_zc(struct xdp_tx_queue *txq, struct xdp_frame **bufs,
         desc = xsk_ring_prod__tx_desc(&txq->tx, index);
         desc->len = frame->data_len;
         addr = (void *)frame - umem->buffer;
-        offset = (frame->data_off + sizeof(struct xdp_frame)) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+        offset = frame->data_off << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
         desc->addr = addr | offset;
         count++;
     }
@@ -282,7 +283,7 @@ xdp_sock_reserve_fq_zc(struct xdp_umem_info *umem, uint16_t reserve_size,
 
     for (i = 0; i < reserve_size; i++) {
         fq_addr = xsk_ring_prod__fill_addr(fq, index++);
-        addr = (void *)bufs[i] - umem->buffer;
+        addr = (uint64_t)bufs[i] - (uint64_t)umem->buffer;
         *fq_addr = addr;
     }
     xsk_ring_prod__submit(fq, reserve_size);

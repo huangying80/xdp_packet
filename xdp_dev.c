@@ -43,7 +43,6 @@ xdp_dev_configure(struct xdp_mempool *pool,
     if (ret < 0) {
         goto out;
     }
-    DEBUG_OUT("%s max queue %d", iface->ifname, max_queues);
     if (queue_count > max_queues || queue_count <= 0) {
         ERR_OUT("specified queue count error, max_queue %d, queue count %d",
             max_queues, queue_count);    

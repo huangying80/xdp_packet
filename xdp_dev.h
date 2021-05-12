@@ -3,9 +3,10 @@
  */
 #ifndef _XDP_DEV_H_
 #define _XDP_DEV_H_
-#include "bpf/xsk.h"
+#include "xsk.h"
 #include "xdp_eth.h"
 #include "xdp_framepool.h"
+#include "linux/if_xdp.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -62,12 +62,13 @@ int main(int argc, char *argv[])
         fprintf(stderr, "xdp_runtime_udp_packet failed with %s\n", eth);
         goto out;
     }
-
+    /* 
     ret = xdp_runtime_ipv4_packet(ip, 32, XDP_UPDATE_IP_DST);
     if (ret < 0) {
         fprintf(stderr, "xdp_runtime_ipv4_packet failed ip %s\n", ip);
         goto out;
     }
+    */ 
     ret = xdp_runtime_setup_queue(&runtime, 1, 1024);
     if (ret < 0) {
         fprintf(stderr, "xdp_runtime_setup_queue failed with %s\n", eth);

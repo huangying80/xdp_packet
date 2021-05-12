@@ -19,7 +19,7 @@ static inline int xdp_ipv4_check_len(uint16_t hdr_len,
     return xdp_ipv4_likely(
         hdr_len == sizeof(struct iphdr)
         && total_len > hdr_len
-        && frame->data_len >= sizeof(struct iphdr) + (total_len));
+        && frame->data_len >= sizeof(struct ethhdr) + (total_len));
 }
 
 static inline uint16_t xdp_ipv4_get_hdr_len(struct iphdr *hdr)

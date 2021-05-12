@@ -21,6 +21,8 @@ xdp_runtime_unlikely((l) != ((dl) + sizeof(struct iphdr)) || (ql) < DNS_HEAD_SIZ
 volatile bool DnsProcess::running = true;
 struct Channel DnsProcess::channelList[MAX_QUEUE];
 
+Dns DnsProcess::packet;
+static std::string ip = "127.0.0.2";
 int DnsProcess::processIpv4(struct xdp_frame *frame, struct Channel *chn)
 {
     struct ethhdr *ethhdr;
@@ -34,8 +36,6 @@ int DnsProcess::processIpv4(struct xdp_frame *frame, struct Channel *chn)
     uint16_t       udpLen;
     uint16_t       dnsLen;
     uint32_t       packetLen;
-    Packet         packet;
-
 
     ethhdr = xdp_frame_get_addr(frame, struct ethhdr *);
     iphdr = (struct iphdr *)(ethhdr + 1);
@@ -56,8 +56,8 @@ int DnsProcess::processIpv4(struct xdp_frame *frame, struct Channel *chn)
     }
         
     dns = (uint8_t *)(udphdr + 1);
-    packet.parse(dns);
-    packet.setDomainIpGroup("127.0.0.2");
+    packet.parse((char *)dns);
+    packet.setDomainIpGroup(ip);
     packetLen = packet.pack((char *)dns);
 
     swapPort(udphdr->source, udphdr->dest);
@@ -69,7 +69,7 @@ int DnsProcess::processIpv4(struct xdp_frame *frame, struct Channel *chn)
     l3PayloadLen = sizeof(struct iphdr) + sizeof(struct udphdr) + packetLen;
     iphdr->tot_len = xdp_htons(l3PayloadLen);
     iphdr->check = 0;
-    iphdr->check = xdp_ipv4_phdr_checksum(iphdr);
+    iphdr->check = xdp_ipv4_checksum(iphdr);
 
     udphdr->check = xdp_ipv4_udptcp_checksum(iphdr, udphdr);
 
@@ -77,6 +77,7 @@ int DnsProcess::processIpv4(struct xdp_frame *frame, struct Channel *chn)
     frame->data_len = l3PayloadLen + sizeof(struct ethhdr);
 
     chn->send_bufs[chn->sendCount++] = frame;
+    packet.reset();
     return 0;
 }
 
@@ -136,6 +137,7 @@ int DnsProcess::worker(volatile void *args)
                     xdp_framepool_free_frame(chn->send_bufs[i]);
                 }
             }
+            chn->sendCount = 0;
         }
     }
 

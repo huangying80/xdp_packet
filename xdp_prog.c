@@ -9,7 +9,7 @@
 #include "bpf.h"
 #include "linux/bpf.h"
 #include "linux/if_link.h"
-#include "bpf/libbpf.h"
+#include "libbpf.h"
 #include "bpf_endian.h"
 
 #include "xdp_prog.h"
@@ -22,6 +22,12 @@
 #ifndef XDP_PROGSEC_LEN
 #define XDP_PROGSEC_LEN (32)
 #endif
+
+#define FOR_EACH_MAP_KEY(_err, _map_fd, _map_key, _prev_key)           \
+    for (_err = bpf_map_get_next_key(_map_fd, NULL, &_map_key);        \
+    !_err;                                                         \
+    _prev_key = _map_key,                                          \
+    _err = bpf_map_get_next_key(_map_fd, &_prev_key, &_map_key))
 
 enum {
     L3_MAP_FD = 0,
@@ -61,7 +67,7 @@ static struct bpf_object* load_bpf_object_file(
 static int xdp_link_attach(int ifindex, __u32 xdp_flags, int prog_fd);
 static int xdp_link_detach(int ifindex, __u32 xdp_flags,
     __u32 expected_prog_id);
-static int xdp_update_map(int map_fd, __u32 key, __u32 val);
+static int xdp_update_map_percpu(int map_fd, __u32 key, __u32 val);
 static int xdp_find_map(struct bpf_object *bpf_obj, const char *map_name);
 
 int xdp_prog_init(const char *ifname, const char *prog, const char *section)
@@ -190,7 +196,7 @@ inline int xdp_prog_update_l3(uint16_t l3_proto, uint32_t action)
 {
     __u32 key = (__u32)bpf_htons(l3_proto);
     __u32 val = (__u32)action;
-    return xdp_update_map(xdp_rt.map_fd[L3_MAP_FD], key, val);
+    return xdp_update_map_percpu(xdp_rt.map_fd[L3_MAP_FD], key, val);
 }
 
 inline int
@@ -249,21 +255,21 @@ inline int xdp_prog_update_l4(uint8_t l4_proto, uint32_t action)
 {
     __u32 key = (__u32)l4_proto;
     __u32 val = (__u32)action;
-    return xdp_update_map(xdp_rt.map_fd[L4_MAP_FD], key, val);
+    return xdp_update_map_percpu(xdp_rt.map_fd[L4_MAP_FD], key, val);
 }
 
 inline int xdp_prog_update_tcpport(uint16_t port, uint32_t action)
 {
     __u32 key = (__u32)bpf_htons(port);
     __u32 val = (__u32)action;
-    return xdp_update_map(xdp_rt.map_fd[TCPPORT_MAP_FD], key, val);
+    return xdp_update_map_percpu(xdp_rt.map_fd[TCPPORT_MAP_FD], key, val);
 }
 
 inline int xdp_prog_update_udpport(uint16_t port, uint32_t action)
 {
     __u32 key = (__u32)bpf_htons(port);
     __u32 val = (__u32)action;
-    return xdp_update_map(xdp_rt.map_fd[UDPPORT_MAP_FD], key, val);
+    return  xdp_update_map_percpu(xdp_rt.map_fd[UDPPORT_MAP_FD], key, val);
 }
 
 int xdp_load_prog(const struct xdp_prog_conf *cfg, struct xdp_prog *xdp_rt)
@@ -342,10 +348,16 @@ int xdp_unload_prog(const struct xdp_prog_conf *cfg)
     return 0; 
 }
 
-static int xdp_update_map(int map_fd, __u32 key, __u32 val)
+static int xdp_update_map_percpu(int map_fd, __u32 key, __u32 val)
 {
-    int err;
-    err = bpf_map_update_elem(map_fd, &key, &val, BPF_ANY);
+    int          err;
+    unsigned int i;
+    unsigned int nr_cpus = libbpf_num_possible_cpus();
+    __u32        cpus_val[nr_cpus];
+    for (i = 0; i < nr_cpus; i++) {
+        cpus_val[i] = val;
+    }
+    err = bpf_map_update_elem(map_fd, &key, cpus_val, BPF_ANY);
     if (err < 0) {
         ERR_OUT("update map key(%u) value(%u) err %d", key, val, err);
         return -1;

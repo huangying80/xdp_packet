@@ -4,9 +4,11 @@
 #include <string.h>
 #include <linux/if_ether.h>
 #include "xdp_framepool.h"
+#include "packet.h"
 
 #define MAX_QUEUE 128
 #define BUF_NUM  32
+
 struct Channel {
     int sendCount;
     struct xdp_frame *send_bufs[BUF_NUM];
@@ -21,6 +23,7 @@ class DnsProcess {
 private:
     static volatile bool running;
     static struct Channel channelList[MAX_QUEUE];
+    static Dns packet;
 public:
     static int worker(volatile void *args);
     static void swapPort(uint16_t &src, uint16_t &dst);
