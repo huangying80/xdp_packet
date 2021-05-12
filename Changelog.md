@@ -42,5 +42,16 @@ huangying-c, email: hy_gzr@163.com
   * 修改了xdp_prog.c文件，在xdp_prog_init中如果prog已经加载时返回错误
   * 修改了xdp_ring.c文件，调整了判断队列长度是否为2的幂的方式
   * 修改了xdp_sock.c文件，修复了为fill_queue分配缓存时，对返回值的错误的判断的问题
-* 2021-04-29:<br>
+* 2021-04-29:<br>（此次改动，基本功能以调试通过，在单核单网卡队列下已经可以正常接收和响应dns报文）
   * 解决了调用fgets时出现段错误的问题，原因是因为frame_list分配了sizeof(struct xdp_frame * ) 的大小，但实际使用时使用了sizeof(struct xdp_frame * ) * ring_size大小的空间造成了内存越界
+* 2021-05-12:<br>
+  * 更新了libbpf库
+  * 新增文件edns.h，定义了edns相关结构，用在测试程序sample/dns_server中
+  * 修改了测试程序sample/dns_server中的packet.cpp和packet.h,用以解决封装dns响应包格式不正确的问题
+  * 修改了测试程序sample/dns_server中的process.cpp,解决了ip头校验和不正确的问题
+  * 修改了测试程序sample/dns_server中的process.cpp,解决了一直不停发包的问题
+  * 修改了xdp_ipv4.h文件，修正了对ip报文字节数检查错误的问题
+  * 修改了xdp_prog.c文件，针对PERCPU_HASH类型的map更新时传入参数错误的问题，正确的参数应该是传入一个数组
+  * 修改了xdp_sock.c文件，解决了从umem中获取报文地址时错误的计算了frame->data_off的问题
+  * 修改了xdp_kern_prog.c文件，调整了丢包、重定向、通过等状态的逻辑,增加了XDP_NOSET状态用于表示没有设置状态<br>
+    将逻辑调整成了如果没有设置就检查下一层协议，如果设置了状态，则不论是什么状态都直接返回，这么做是为了提高执行效率
