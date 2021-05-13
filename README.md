@@ -21,6 +21,17 @@ huangying, email: hy_gzr@163.com
   * 多核多网卡下的测试程序sample/dns_server的压力测试
   * 多核多网卡下且设置numa节点的测试程序sample/dns_server的压力测试
 #### 当前问题：
+  * 当启用两个网卡队列时，只能从一个队列上收到包，另外一个队列在查询action时，是一个大于XDP_NOSET的异常值,目前怀疑是设置action时的问题
+  ```
+       xdp_wrk_1-3690    [001] d.s. 4841387.931197: bpf_trace_printk: udp port 53, action 4
+       xdp_wrk_1-3690    [001] d.s. 4841395.431245: bpf_trace_printk: udp port 53, action 4
+          <idle>-0       [019] d.s. 4841399.366956: bpf_trace_printk: udp port 53, action 4343432
+          <idle>-0       [019] dNs. 4841401.367064: bpf_trace_printk: udp port 53, action 4343432
+          <idle>-0       [019] dNs. 4841403.367243: bpf_trace_printk: udp port 53, action 4343432
+          <idle>-0       [019] d.s. 4841415.952493: bpf_trace_printk: udp port 53, action 4343432
+          <idle>-0       [019] dNs. 4841417.952617: bpf_trace_printk: udp port 53, action 4343432
+          <idle>-0       [019] dNs. 4841419.952769: bpf_trace_printk: udp port 53, action 4343432
+   ```
   * 调用fgets时出现段错误，这个问题比较奇怪，至今没找到原因,栈信息如下, 目前怀疑是内存出现越界或覆盖的问题
   ```
   (gdb) bt
