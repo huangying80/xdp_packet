@@ -20,7 +20,8 @@ huangying, email: hy_gzr@163.com
   * 多核多网卡下的测试程序sample/dns_server的压力测试
   * 多核多网卡下且设置numa节点的测试程序sample/dns_server的压力测试
 #### 当前问题：
-  * 当启用两个网卡队列时，只能从一个队列上收到包，另外一个队列在查询action时，是一个大于XDP_NOSET的异常值,目前怀疑是设置action时的问题
+  * 当启用两个网卡队列时，只能从一个队列上收到包。
+  * 另外一个队列在查询action时，是一个大于XDP_NOSET的异常值,目前怀疑是设置action时的问题
   ```
        xdp_wrk_1-3690    [001] d.s. 4841387.931197: bpf_trace_printk: udp port 53, action 4
        xdp_wrk_1-3690    [001] d.s. 4841395.431245: bpf_trace_printk: udp port 53, action 4
@@ -31,6 +32,86 @@ huangying, email: hy_gzr@163.com
           <idle>-0       [019] dNs. 4841417.952617: bpf_trace_printk: udp port 53, action 4343432
           <idle>-0       [019] dNs. 4841419.952769: bpf_trace_printk: udp port 53, action 4343432
    ```
+   通过分析内核源码关于系统调用bpf的实现可以确定是使用BPF_MAP_TYPE_PERCPU_HASH的方法不对造成的内存被污染的问题，造成在更新及查询此类map时无法正确获得指定key对应的value
+   ** 首先分析内核中更新操作的代码
+   涉及文件:<br>
+   kernel/bpf/syscall.c<br>
+   调用过程：<br>
+   SYSCALL_DEFINE3(bpf, ...) -> map_update_elem<br>
+   相关代码：<br>
+   ```
+   SYSCALL_DEFINE3(bpf, int, cmd, union bpf_attr __ user \*, uattr , unsigned int , size)
+   {
+     ....
+     switch (cmd) {
+     case BPF_MAP_CREATE:
+        err = map_create(&attr);
+        break;
+     case BPF_MAP_LOOKUP_ELEM:
+        err = map_lookup_elem(&attr);
+        break;
+     case BPF_MAP_UPDATE_ELEM:
+        err = map_update_elem(&attr);//此处执行真正的更新操作
+        break;
+     ...
+   }
+  
+   static int map_update_elem(union bpf_attr *attr)
+   {
+     ...
+     if (map->map_type == BPF_MAP_TYPE_PERCPU_HASH ||
+        map->map_type == BPF_MAP_TYPE_LRU_PERCPU_HASH ||
+        map->map_type == BPF_MAP_TYPE_PERCPU_ARRAY ||
+        map->map_type == BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE)
+        value_size = round_up(map->value_size, 8) * num_possible_cpus();//此处对于per cpu类的map的value_size必须是8字节对齐乘以cpu核数
+     else
+        value_size = map->value_size;
+     
+     err = -ENOMEM;
+     value = kmalloc(value_size, GFP_USER | __GFP_NOWARN);
+     if (!value)
+         goto free_key;
+
+     err = -EFAULT;
+     if (copy_from_user(value, uvalue, value_size) != 0)//此处将value_size个字节数从用户空间拷贝到内核空间
+        goto free_value;
+
+     err = bpf_map_update_value(map, f, key, value, attr->flags);
+     ...
+   }
+   ```
+   所以要求来自用户空间的value的字节数必须是cpu核数个的长度，每个元素大小为8字节对齐的连续空间<br>
+   结论<br>
+   1. 也就是说在定义BPF_MAP_TYPE_PERCPU_HASH的map时value的大小必须是8字节对齐的，如果是数值型的只能是uint64_t等8字节的数据类型
+   2. 再更新时必须是cpu核心数的长度的数组
+   例：
+   ```
+   struct bpf_map_def SEC("maps") percpu_map {
+    .type = BPF_MAP_TYPE_PERCPU_HASH,
+    .key_size = sizeof(uint32_t),
+    .value_size = sizeof(uint64_t), //此处value_size必须为8对齐
+    .max_entries = 1024,
+   }
+   //更新示例代码
+   static int xdp_update_map_percpu(int map_fd, __u32 key, __u32 val)
+   {
+        int          err;
+        unsigned int i;
+        unsigned int nr_cpus = libbpf_num_possible_cpus();
+        __u64        cpus_val[nr_cpus];
+        for (i = 0; i < nr_cpus; i++) {
+            cpus_val[i] = val;
+        }
+        err = bpf_map_update_elem(map_fd, &key, cpus_val, BPF_ANY);
+        if (err < 0) {
+            ERR_OUT("update map key(%u) value(%u) err %d", key, val, err);
+            return -1;
+        }
+
+        return 0;
+   }
+   ```
+  
   * 调用fgets时出现段错误，这个问题比较奇怪，至今没找到原因,栈信息如下, 目前怀疑是内存出现越界或覆盖的问题
   ```
   (gdb) bt
