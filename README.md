@@ -1,6 +1,6 @@
-# **xdp_packet**
-
+**xdp_packet**<br>
 huangying, email: hy_gzr@163.com
+====
 
 因为dpdk需要用uio驱动接管网卡，当应用出现问题时，维护起来比较麻烦，可能需要两块网卡，一块用于收发包处理，一个用于远程登陆 但是xdp可以将ebpf程序加载到网卡驱动中执行，而不需要从内核中将网卡接管。利用此特性给维护提供了方便，不需要额外的管理网卡就可以远程登录。 dpdk中虽然也支持af_xdp,但是低版本中存在个别的bug,在一定条件下会触发段错误，在低版本中会存在性能不够的情况（这些问题，dpdk官方已经有补丁） 又因为dpdk强大的功能导致整个源码复杂庞大，不太方便学习，所以决定搞一个简单点的，基于xdp的高性能收发包框架xdp_packet,以便于学习和应用到之后 的工作中，此项目需要了解xdp,ebpf为基础
 
@@ -21,7 +21,8 @@ huangying, email: hy_gzr@163.com
   * 多核多网卡下且设置numa节点的测试程序sample/dns_server的压力测试
 #### 当前问题：
   * 当启用两个网卡队列时，只能从一个队列上收到包。
-  * 另外一个队列在查询action时，是一个大于XDP_NOSET的异常值,目前怀疑是设置action时的问题
+  -------
+  * 另外一个队列在查询action时，是一个大于XDP_NOSET的异常值,目前怀疑是设置action时的问题.`已解决`
   ```
        xdp_wrk_1-3690    [001] d.s. 4841387.931197: bpf_trace_printk: udp port 53, action 4
        xdp_wrk_1-3690    [001] d.s. 4841395.431245: bpf_trace_printk: udp port 53, action 4
@@ -111,8 +112,8 @@ huangying, email: hy_gzr@163.com
         return 0;
    }
    ```
-  
-  * 调用fgets时出现段错误，这个问题比较奇怪，至今没找到原因,栈信息如下, 目前怀疑是内存出现越界或覆盖的问题
+   ------
+  * 调用fgets时出现段错误，这个问题比较奇怪，至今没找到原因,栈信息如下, 目前怀疑是内存出现越界或覆盖的问题.`已解决`
   ```
   (gdb) bt
 #0  0x00007fac44dcf2f0 in _int_malloc () from /lib64/libc.so.6
@@ -131,9 +132,10 @@ huangying, email: hy_gzr@163.com
     worker_count=1) at xdp_runtime.c:177
 #12 0x0000000000404713 in main (argc=9, argv=0x7fffdbb8e0e8) at main.cpp:76
   ```
-经过几天的时间此问题终于解决，又是因为一个低级错误造成的内存越界
-具体是在xdp_framepool.c文件中的xdp_framepool_create中给frame_list分配的空间是sizeof(struct xdp_frame * ),但在访问frame_list的时候是按sizeof(struct xdp_frame * ) * ring_size进行地址访问的，所以造成了内存越界，被覆盖的内存正好是fgets中被使用了，所以造成在调用fgets时出现段错误
-  * XDP_USE_NEED_WAKEUP标记没起作用，目前还没确定问题，正在调试中
+经过几天的时间此问题终于解决，又是因为一个低级错误造成的内存越界,具体是在xdp_framepool.c文件中的xdp_framepool_create中给frame_list分配的空间是sizeof(struct xdp_frame * ),但在访问frame_list的时候是按sizeof(struct xdp_frame * ) * ring_size进行地址访问的，所以造成了内存越界，被覆盖的内存正好是fgets中被使用了，所以造成在调用fgets时出现段错误
+
+------
+  * XDP_USE_NEED_WAKEUP标记没起作用.`已解决`
     通过分析内核中ixgbe驱动的源码（开发环境内核5.9.1，测试网卡ixgbe）</br>
     收包流程大致为ixgbe_poll -> ixgbe_clean_rx_irq_zc</br>
     ixgbe_clean_rx_irq_zc中相关代码片段如下(省略其他不相关的代码)</br>
@@ -188,3 +190,4 @@ huangying, email: hy_gzr@163.com
     数据包内存空间的起始地址是指用来存储数据包的内存空间首地址，</br>
     这两个的地址是不同的，留出这段空间是为了方便实现类似ip隧道之类的封装和解封装使用的。</br>
     至于headroom则是用户空间代码中设置的偏移量。
+ ------
