@@ -10,7 +10,6 @@ inline size_t xdp_ring_memory_size(uint32_t count)
     }
     size = sizeof(struct xdp_ring) + count * sizeof(void *);
     size = XDP_ALIGN(size, XDP_CACHE_LINE);
-    size += XDP_CACHE_LINE;
     return size;
 }
 

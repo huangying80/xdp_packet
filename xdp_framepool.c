@@ -10,7 +10,10 @@
 #include "xdp_dev.h"
 
 #define XDP_FRAMEPOOL_HDR_SIZE \
-    (XDP_ALIGN(sizeof(struct xdp_framepool), XDP_CACHE_LINE) + XDP_CACHE_LINE)
+    (XDP_ALIGN(sizeof(struct xdp_framepool), XDP_CACHE_LINE))
+
+#define XDP_FRAMEPOOL_HDR_ADDR_SIZE \
+    (XDP_FRAMEPOOL_HDR_SIZE + XDP_CACHE_LINE)
 
 #define XDP_FRAME_HEADROOM(fh) \
     ((fh) + sizeof(struct xdp_frame))
@@ -21,11 +24,13 @@
     (XDP_FRAME_SIZE(fs) + XDP_FRAME_HEADROOM(fh))
 
 #define XDP_FRAMESPACE_SIZE(fs, fh, l) \
-    (XDP_ALIGN(XDP_FRAME_PER_SIZE(fs, fh) * (l), XDP_PAGESIZE) + XDP_PAGESIZE)
+    (XDP_ALIGN(XDP_FRAME_PER_SIZE(fs, fh) * (l), XDP_PAGESIZE))
 
+#define XDP_FRAMESPACE_ADDR_SIZE(fs, fh, l) \
+    (XDP_FRAMESPACE_SIZE(fs, fh, l) + XDP_PAGESIZE)
 
-inline size_t
-xdp_framepool_memory_size(uint32_t len, size_t frame_size,
+size_t
+xdp_framepool_memory_addr_size(uint32_t len, size_t frame_size,
     size_t frame_headroom)
 {
     size_t framepool_hdr_size;
@@ -33,18 +38,19 @@ xdp_framepool_memory_size(uint32_t len, size_t frame_size,
     size_t ring_memory_size;
     size_t size;
 
-    framepool_hdr_size = XDP_FRAMEPOOL_HDR_SIZE;
+    framepool_hdr_size = XDP_FRAMEPOOL_HDR_ADDR_SIZE;
     len = xdp_align_pow2_32(len);
-    ring_memory_size = xdp_ring_memory_size(len);
+    ring_memory_size = xdp_ring_memory_addr_size(len);
     if (!ring_memory_size) {
         return 0;
     }
 
-    frame_space_size = XDP_FRAMESPACE_SIZE(frame_size, frame_headroom, len);
+    frame_space_size = XDP_FRAMESPACE_ADDR_SIZE(frame_size, frame_headroom, len);
     size = framepool_hdr_size + ring_memory_size + frame_space_size;
 
     return size;
 }
+
 
 struct xdp_framepool *
 xdp_framepool_create(struct xdp_mempool *pool, uint32_t len,

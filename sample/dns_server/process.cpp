@@ -8,6 +8,7 @@
 #include "xdp_prefetch.h"
 #include "xdp_framepool.h"
 #include "xdp_ipv4.h"
+#include "xdp_log.h"
 
 #include "process.h"
 #include "packet.h"

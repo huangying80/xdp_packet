@@ -30,9 +30,8 @@ struct xdp_framepool {
     void               *base_addr;
 } XDP_CACHE_ALIGN;
 
-struct xdp_frame *xdp_framepool_addr_to_frame(
-    struct xdp_framepool *fpool, void *addr);
-size_t xdp_framepool_memory_size(uint32_t len, size_t frame_size,
+
+size_t xdp_framepool_memory_addr_size(uint32_t len, size_t frame_size,
     size_t frame_headroom);
 struct xdp_framepool *xdp_framepool_create(struct xdp_mempool *pool,
     uint32_t len, size_t frame_size, size_t frame_headroom);

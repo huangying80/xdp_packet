@@ -20,6 +20,9 @@
 #define XSKS_MAP_REF &xsks_map
 #define XSKS_MAP_NAME xsks_map
 
+#define XDP_ROUND_MASK(x, y) ((__typeof__(x))((y)-1))
+#define XDP_ROUND_UP(x, y) ((((x) - 1) | XDP_ROUND_MASK(x, y)) + 1)
+#define XDP_PERCPU_HASH_VAL_SIZE(s) XDP_ROUND_UP(s, 8)
 
 #define MAP_INIT(_t, _ks, _vs, _me)   \
 {                                     \

@@ -50,6 +50,7 @@ xdp_runtime_init(struct xdp_runtime *runtime,
     runtime->workers = 0; 
     runtime->mempool = NULL;
     runtime->eth_numa_node = xdp_eth_numa_node(ifname);
+    runtime->numa_node = runtime->eth_numa_node;
     if (xdp_eth_get_info(ifname, &runtime->iface) < 0) {
         return -1;
     }
@@ -96,26 +97,25 @@ xdp_runtime_setup_queue(struct xdp_runtime *runtime,
     size_t                fp_size;
     int                   ret = -1;
     int                   i = 0;
-
     int                   numa_node;
 
     if (!runtime || !queue_count || !queue_size) {
         return -1;
     }
 
-    umem_size = xdp_dev_umem_info_pool_memsize(queue_count);
-    qmem_size = xdp_dev_queue_memsize(queue_count);
+    umem_size = xdp_dev_umem_info_pool_addr_memsize(queue_count);
+    qmem_size = xdp_dev_queue_addr_memsize(queue_count);
 
     frame_count = runtime->fill_size;
     frame_size = runtime->frame_size;
     frame_headroom = runtime->frame_headroom;
-    fp_size = xdp_framepool_memory_size(frame_count, frame_size, frame_headroom);
+    fp_size = xdp_framepool_memory_addr_size(frame_count, frame_size, frame_headroom);
     if (!fp_size) {
         return -1;
     }
 
     mempool_size = umem_size + qmem_size + fp_size * queue_count;;
-    numa_node = runtime->eth_numa_node;
+    numa_node = runtime->numa_node;
     pool = xdp_mempool_create(numa_node, mempool_size); 
     if (!pool) {
         goto out;
@@ -130,6 +130,7 @@ xdp_runtime_setup_queue(struct xdp_runtime *runtime,
         frame_pool = xdp_framepool_create(pool, frame_count,
             frame_size, frame_headroom);
         if (!frame_pool) {
+            ret = -1;
             goto out;
         }
         ret = xdp_dev_queue_configure(i, queue_size, frame_pool);    
@@ -169,7 +170,7 @@ xdp_runtime_setup_workers(struct xdp_runtime *runtime,
     if (!worker_count || (size_t)worker_count > runtime->queue_count) {
         worker_count = (unsigned short)runtime->queue_count;
     }
-    numa_node = runtime->eth_numa_node;
+    numa_node = runtime->numa_node;
     if (numa_node < 0) {
         numa_node = 0;
     }
@@ -179,7 +180,9 @@ xdp_runtime_setup_workers(struct xdp_runtime *runtime,
     n = worker_count - count;
     if (n) {
         count = xdp_workers_enable(n);
-        if (count == n) {
+        if (count < n) {
+            ERR_OUT("runtime setup worker failed, workers is not enough for %u",
+                worker_count);
             goto out;
         }
     }
@@ -219,6 +222,13 @@ void xdp_runtime_release(struct xdp_runtime *runtime)
     if (runtime->mempool) {
         xdp_mempool_release(runtime->mempool);
     }
+}
+
+inline int xdp_runtime_setup_numa(struct xdp_runtime *runtime, int numa_node)
+{
+    int old = runtime->numa_node;
+    runtime->numa_node = numa_node;
+    return old;
 }
 
 inline int xdp_runtime_tcp_packet(uint16_t port)

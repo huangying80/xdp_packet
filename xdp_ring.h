@@ -40,6 +40,7 @@ struct xdp_ring *xdp_ring_create(struct xdp_mempool *pool,
     uint32_t count, int flags);
 
 size_t xdp_ring_memory_size(uint32_t count);
+#define xdp_ring_memory_addr_size(n) (xdp_ring_memory_size(n) + XDP_CACHE_LINE)
 
 #define XDP_ENQUEUE_ADDR(r, ring_start, prod_head, obj_table, n, obj_type) \
 do { \

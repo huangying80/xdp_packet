@@ -61,7 +61,7 @@ XSKS_MAP_DEFINE = MAP_INIT (
 MAP_DEFINE(layer3) = MAP_INIT (
     BPF_MAP_TYPE_PERCPU_HASH,
     sizeof(__u32),
-    sizeof(__u32),
+    sizeof(__u64),
     MAX_LAYER3_NUM
 );
 XDP_ACTION_DEFINE(layer3)
@@ -155,7 +155,7 @@ XDP_ACTION_DEFINE(ipv4)
     if (action) {
         ret = *action;
     }
-    pdebug("ip dst action %u\n", ret);
+    pdebug("ip dst action %u", ret);
 
 out:
     cur->pos += hdrsize;
@@ -219,7 +219,7 @@ out:
 MAP_DEFINE(layer4) = MAP_INIT (
     BPF_MAP_TYPE_PERCPU_HASH,
     sizeof(__u32),
-    sizeof(__u32),
+    sizeof(__u64),
     MAX_LAYER4_NUM
 );
 XDP_ACTION_DEFINE(layer4) //check tcp or udp
@@ -239,13 +239,13 @@ XDP_ACTION_DEFINE(layer4) //check tcp or udp
 MAP_DEFINE(tcp_port) = MAP_INIT (
     BPF_MAP_TYPE_PERCPU_HASH,
     sizeof(__u32),
-    sizeof(__u32),
+    sizeof(__u64),
     MAX_PORT_NUM
 );
 XDP_ACTION_DEFINE(tcp_port)
 {
     int       len;
-    __u32    *action;
+    __u64    *action;
 
     struct tcphdr *h = cur->pos;
     
@@ -277,12 +277,12 @@ XDP_ACTION_DEFINE(tcp_port)
 MAP_DEFINE(udp_port) = MAP_INIT (
     BPF_MAP_TYPE_PERCPU_HASH,
     sizeof(__u32),
-    sizeof(__u32),
+    sizeof(__u64),
     MAX_PORT_NUM
 );
 XDP_ACTION_DEFINE(udp_port)
 {
-    __u32   *action;
+    __u64   *action;
     int      len;
     struct udphdr *h = cur->pos;
     
@@ -366,19 +366,26 @@ int xdp_sock_main(struct xdp_md *ctx)
     pdebug("port action %u, queue %d", action, ctx->rx_queue_index); 
 
 out:
-    if (action == XDP_REDIRECT) {
-        index = ctx->rx_queue_index;
-        value = bpf_map_lookup_elem(XSKS_MAP_REF, &index);
-        if (!value) {
-            perror("oops, no queue matched for port %u in layer3 %x layer4 %x",
-                bpf_ntohs(cur->port), cur->l3_proto, cur->l4_proto);
-            return XDP_ABORTED;
-        }
-        action = bpf_redirect_map(XSKS_MAP_REF, index, 0);
-        pdebug("value %d, queue %d, action %u", *value, index, action);
+    switch (action) {
+        case XDP_NOSET:
+            action = XDP_PASS;
+            break;
+        case XDP_REDIRECT:
+            index = ctx->rx_queue_index;
+            value = bpf_map_lookup_elem(XSKS_MAP_REF, &index);
+            if (!value) {
+                perror(
+                    "oops, no queue matched for port %u in layer3 %x layer4 %x",
+                    bpf_ntohs(cur->port), cur->l3_proto, cur->l4_proto);
+                return XDP_ABORTED;
+            }
+            action = bpf_redirect_map(XSKS_MAP_REF, index, 0);
+            pdebug("value %d, queue %d, action %u", *value, index, action);
+        default:
+            break;
     }
 
-    pdebug("final action %u----", action);
+    pdebug("---- final action %u ----\n", action);
     return action;
 }
 XDP_SOCK_END

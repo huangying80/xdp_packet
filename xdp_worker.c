@@ -132,7 +132,7 @@ unsigned short xdp_workers_enable(unsigned short count)
         n++;
     }
 
-    return n - count;
+    return n;
 }
 
 unsigned short xdp_workers_enable_by_numa(int numa_node, unsigned short count)
@@ -140,6 +140,9 @@ unsigned short xdp_workers_enable_by_numa(int numa_node, unsigned short count)
     int            i;
     unsigned short n = 0;
     for (i = 0; i < XDP_MAX_WORKER && n < count; i++) {
+        if (xdp_workers_set[i]) {
+            continue;
+        }
         if (xdp_workers[i].numa_node_id == numa_node) {
             xdp_workers_set[i] = 1;
             n++;

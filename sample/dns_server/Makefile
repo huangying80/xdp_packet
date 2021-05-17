@@ -1,5 +1,5 @@
 CC := g++
-DEBUG := -g
+DEBUG := -g -DXDP_DEBUG_VERBOSE
 LIB := -lpthread -lz 
 SRC := $(wildcard *.cpp)
 OBJ := $(SRC:%.cpp=%.o)

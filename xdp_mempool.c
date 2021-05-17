@@ -68,7 +68,6 @@ void *xdp_mempool_alloc(struct xdp_mempool *pool, size_t size, size_t align)
         ERR_OUT("memory is not enough for size %lu", size);
         return NULL;
     }
-
     addr = pool->last;
     if (XDP_IS_POWER2(align)) {
         addr = (void *)XDP_ALIGN((uintptr_t)addr, align);

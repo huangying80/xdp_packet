@@ -173,7 +173,6 @@ inline size_t xdp_dev_umem_info_pool_memsize(uint32_t n)
     size = sizeof(struct xdp_umem_info_pool);
     size += sizeof(struct xdp_umem_info) * n;
     size = XDP_ALIGN(size, XDP_CACHE_LINE);
-    size += XDP_CACHE_LINE;
     return size;
 }
     
@@ -220,11 +219,9 @@ inline size_t xdp_dev_queue_memsize(size_t queue_count)
     size_t rx_size;
     rx_size = sizeof(struct xdp_rx_queue) * queue_count;
     rx_size = XDP_ALIGN(rx_size, XDP_CACHE_LINE);
-    rx_size += XDP_CACHE_LINE;
 
     tx_size = sizeof(struct xdp_tx_queue) * queue_count;
     tx_size = XDP_ALIGN(tx_size, XDP_CACHE_LINE);
-    tx_size += XDP_CACHE_LINE;
     return tx_size + rx_size;
 }
 

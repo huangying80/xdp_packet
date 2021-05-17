@@ -61,6 +61,7 @@ struct xdp_prog {
 static struct xdp_prog xdp_rt;
 
 static int xdp_load_prog(const struct xdp_prog_conf *cfg, struct xdp_prog *xdp_rt);
+static int xdp_reload_prog(const struct xdp_prog_conf *cfg);
 static int xdp_unload_prog(const struct xdp_prog_conf *cfg);
 static struct bpf_object* load_bpf_object_file(
     const char *filename, int ifindex);
@@ -97,15 +98,7 @@ int xdp_prog_init(const char *ifname, const char *prog, const char *section)
             break;
         case -EBUSY:
         case -EEXIST:
-            /*
-            xdp_link_detach(cfg.iface.ifindex, cfg.xdp_flags, 0);
-            ret = xdp_load_prog(&cfg, &xdp_rt);
-            if (ret < 0) {
-                return -1;
-            }
-            */
-            ERR_OUT("xdp_load_prog failed, %s: %s", cfg.prog_path, cfg.section);
-            return -1;
+            xdp_reload_prog(&cfg);
             break;
         default:
             return -1;
@@ -269,7 +262,7 @@ inline int xdp_prog_update_udpport(uint16_t port, uint32_t action)
 {
     __u32 key = (__u32)bpf_htons(port);
     __u32 val = (__u32)action;
-    return  xdp_update_map_percpu(xdp_rt.map_fd[UDPPORT_MAP_FD], key, val);
+    return xdp_update_map_percpu(xdp_rt.map_fd[UDPPORT_MAP_FD], key, val);
 }
 
 int xdp_load_prog(const struct xdp_prog_conf *cfg, struct xdp_prog *xdp_rt)
@@ -328,6 +321,28 @@ int xdp_load_prog(const struct xdp_prog_conf *cfg, struct xdp_prog *xdp_rt)
     return 0;
 }
 
+int xdp_reload_prog(const struct xdp_prog_conf *cfg)
+{
+    int     err;
+    __u32   prog_id = 0;
+
+    err = bpf_get_link_xdp_id(cfg->iface.ifindex, &prog_id, cfg->xdp_flags);
+    if (err) {
+        ERR_OUT("xdp prog reload, get link xdp id failed, %s: %s",
+            cfg->prog_path, cfg->section);
+        return -1;
+    }
+    if (!prog_id) {
+        return xdp_load_prog(cfg, &xdp_rt);
+    }
+
+    if (xdp_unload_prog(cfg) < 0) {
+        return -1;
+    }
+
+    return xdp_load_prog(cfg, &xdp_rt);
+}
+
 int xdp_unload_prog(const struct xdp_prog_conf *cfg)
 {
     int     err;
@@ -340,9 +355,9 @@ int xdp_unload_prog(const struct xdp_prog_conf *cfg)
 
     err = bpf_get_link_xdp_id(cfg->iface.ifindex,
         &curr_prog_id, cfg->xdp_flags);
-    if (curr_prog_id != 0) {
-        ERR_OUT("detach from %s error,maybe unload mode is not match",
-            cfg->iface.ifname);
+    if (err) {
+        ERR_OUT("detach from %s error,maybe unload mode is not match, errno %d",
+            cfg->iface.ifname, err);
         return -1;
     }
     return 0; 
@@ -353,7 +368,7 @@ static int xdp_update_map_percpu(int map_fd, __u32 key, __u32 val)
     int          err;
     unsigned int i;
     unsigned int nr_cpus = libbpf_num_possible_cpus();
-    __u32        cpus_val[nr_cpus];
+    __u64        cpus_val[nr_cpus];
     for (i = 0; i < nr_cpus; i++) {
         cpus_val[i] = val;
     }

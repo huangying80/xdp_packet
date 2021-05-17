@@ -3,6 +3,7 @@
  */
 #include <errno.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <dirent.h>
 #include <limits.h>
 #include <stdio.h>
@@ -55,11 +56,27 @@ int xdp_hugepage_init(void *data)
     char  path[PATH_MAX];
     int   ret = -1;
     char *dir = (char *)data;
+    struct stat st;
 
+    snprintf(path, PATH_MAX, "%s/%s/%s", dir, XDP_HUGEPAGE_SUBDIR,
+        XDP_HUGEPAGE_MAP_FILE);
+    if (!stat(path, &st) || errno != ENOENT) {
+        unlink(path);
+    }
     snprintf(path, PATH_MAX, "%s/%s", dir, XDP_HUGEPAGE_SUBDIR);
+    if (stat(path, &st) < 0) {
+        ERR_OUT("hugepage init failed, path %s, %s", path, strerror(errno));
+        return ret;
+    }
+    if (!(st.st_mode & S_IFDIR)) {
+        ERR_OUT("hugepage init failed, path %s, is not a directory", path);
+    }
+    umount(path);
     ret = mount("nodev", path, "hugetlbfs", MS_MGC_VAL, NULL);
     if (ret < 0) {
-        ERR_OUT("mount hugetlbfs on %s failed, err %d", path, errno);
+        ERR_OUT("hugpage iint failed, mount hugetlbfs on %s failed, err %s",
+            path, strerror(errno));
+        return ret;
     }
 
     return ret;
@@ -70,12 +87,29 @@ int xdp_hugepage_release(void *data)
     char     path[PATH_MAX];
     int      ret = -1;
     char    *dir = (char *)data;
+    struct stat st;
 
     snprintf(path, PATH_MAX, "%s/%s/%s", dir, XDP_HUGEPAGE_SUBDIR,
         XDP_HUGEPAGE_MAP_FILE);
+    if (stat(path, &st) < 0) {
+        ERR_OUT("hugepage release failed, path %s, %s", path, strerror(errno));
+        return ret;
+    }
+    if (!(st.st_mode & S_IFREG)) {
+        ERR_OUT("hugepage release failed, path %s, is not a file", path);
+        return ret;
+    }
     unlink(path);
 
     snprintf(path, PATH_MAX, "%s/%s", dir, XDP_HUGEPAGE_SUBDIR);
+    if (stat(path, &st) < 0) {
+        ERR_OUT("hugepage release failed, path %s, %s", path, strerror(errno));
+        return ret;
+    }
+    if (!(st.st_mode & S_IFDIR)) {
+        ERR_OUT("hugepage release failed, path %s, is not a directory", path);
+        return ret;
+    }
     ret = umount2(path, MNT_FORCE);
     if (ret < 0) {
         ERR_OUT("umount hugetlbfs from %s failed, err %d", path, errno);

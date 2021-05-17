@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
         goto out;
     }
     */ 
-    ret = xdp_runtime_setup_queue(&runtime, 1, 1024);
+    ret = xdp_runtime_setup_queue(&runtime, 2, 1024);
     if (ret < 0) {
         fprintf(stderr, "xdp_runtime_setup_queue failed with %s\n", eth);
         goto out;
