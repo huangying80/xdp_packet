@@ -1,4 +1,4 @@
-huangying-c, email: hy_gzr@163.com
+huangying, email: hy_gzr@163.com
 
 #### 修改历史：
 * 2021-04-15:<br>
