@@ -12,9 +12,8 @@ huangying, email: hy_gzr@163.com
   **已经移动到Changelog.md**<br>
 **目前为初步调试阶段,developing分支为正在调试及开发的分支**<br>
 #### 当前状态：
-  * 在单核单网卡队列的环境下可以正常收发包
+  * 大页内存功能调试完成
 #### 未来计划：
-  * 调试大页内存功能
   * 调试在多核多网卡队列下的收发包处理
   * 单核单网卡下的测试程序sample/dns_server的压力测试
   * 单核单网卡下且设置numa节点的测试程序sample/dns_server的压力测试
