@@ -55,3 +55,16 @@ huangying-c, email: hy_gzr@163.com
   * 修改了xdp_sock.c文件，解决了从umem中获取报文地址时错误的计算了frame->data_off的问题
   * 修改了xdp_kern_prog.c文件，调整了丢包、重定向、通过等状态的逻辑,增加了XDP_NOSET状态用于表示没有设置状态<br>
     将逻辑调整成了如果没有设置就检查下一层协议，如果设置了状态，则不论是什么状态都直接返回，这么做是为了提高执行效率
+* 2021-05-17:<br>
+  * 修改了sample/dns_server/Makefile文件，以启用输出调试信息的功能
+  * 修改了xdp_dev.h和xdp_dev.c文件，在计算收发队列数据结构占用字节数的计算中去掉了在最后加上XDP_CACHE_LINE的处理以解决过多的从内存池中分配内存造成内存池不够用的问题
+  * 修改了xdp_frame.h和xdp_fram.c，在计算收发队列数据结构占用字节数的计算中去掉了在最后加上XDP_CACHE_LINE的处理以解决过多的从内存池中分配内存造成内存池不够用的问题
+  * 修改了xdp_hugepage.c文件，在xdp_hugepage_init中增加了先清理环境再挂在的处理，以防止程序意外退出再启动时对大页的重复占用造成耗尽的问题
+  * 修改了xdp_hugepage.c文件，在xdp_hugepage_releae中增加了对大页文件及目录是否存在的判断以避免出现umount2调用失败的情况
+  * 修改了xdp_kern_prog/xdp_kern_prog.c文件，将所有BPF_MAP_TYPE_PERCPU_HASH类型map的value_size的设置，从__u32改成了__u64,因为BPF_MAP_TYPE_PERCPU_HASH类型的map的值大小必须是8字节对齐的
+  * 修改了xdp_kern_prog/xdp_kern_prog.c文件，当action为XDP_NOSET时，将此action设置成XDP_PASS,也就是将默认action调整成了XDP_PASS
+  * 修改了xdp_prog.c文件，增加了xdp_prog_reload接口，用来程序在上一次加载后意外退出后而没有卸载prog造成的本次无法加载的问题
+  * 修改了xdp_prog.c文件，纠正了对BPF_MAP_TYPE_PERCPU_HASH类型map错误的更新方法的问题
+  * 修改了xdp_ring.h和xdp_ring.c文件，在计算收发队列数据结构占用字节数的计算中去掉了在最后加上XDP_CACHE_LINE的处理以解决过多的从内存池中分配内存造成内存池不够用的问题
+  * 修改了xdp_runtime.h和xdp_runtime.c文件，增加了允许用户指定numa节点的处理
+  * 修改了xdp_worker.c文件，解决了使能worker时，返回使能的worker的数量不对的问题
