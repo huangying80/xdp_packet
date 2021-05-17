@@ -14,6 +14,7 @@ huangying, email: hy_gzr@163.com
 #### 当前状态：
   * 大页内存功能调试完成
 #### 未来计划：
+  * ~~大页内存功能调试完成~~
   * 调试在多核多网卡队列下的收发包处理
   * 单核单网卡下的测试程序sample/dns_server的压力测试
   * 单核单网卡下且设置numa节点的测试程序sample/dns_server的压力测试
@@ -21,7 +22,7 @@ huangying, email: hy_gzr@163.com
   * 多核多网卡下且设置numa节点的测试程序sample/dns_server的压力测试
 #### 当前问题：
   * 当启用两个网卡队列时，只能从一个队列上收到包.`解决中`
-  -------
+  ____
   * 另外一个队列在查询action时，是一个大于XDP_NOSET的异常值,目前怀疑是设置action时的问题.`已解决`
   ```
        xdp_wrk_1-3690    [001] d.s. 4841387.931197: bpf_trace_printk: udp port 53, action 4
