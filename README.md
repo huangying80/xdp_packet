@@ -44,7 +44,7 @@ huangying, email: hy_gzr@163.com
    SYSCALL_DEFINE3(bpf, ...) -> map_update_elem<br>
    相关代码：<br>
    ```
-   SYSCALL_DEFINE3(bpf, int, cmd, union bpf_attr __ user \*, uattr , unsigned int , size)
+   SYSCALL_DEFINE3(bpf, int, cmd, union bpf_attr __ user *, uattr , unsigned int , size)
    {
      ....
      switch (cmd) {
