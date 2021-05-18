@@ -68,3 +68,8 @@ huangying, email: hy_gzr@163.com
   * 修改了xdp_ring.h和xdp_ring.c文件，在计算收发队列数据结构占用字节数的计算中去掉了在最后加上XDP_CACHE_LINE的处理以解决过多的从内存池中分配内存造成内存池不够用的问题
   * 修改了xdp_runtime.h和xdp_runtime.c文件，增加了允许用户指定numa节点的处理
   * 修改了xdp_worker.c文件，解决了使能worker时，返回使能的worker的数量不对的问题
+* 2021-05-18:<br>
+  * 修改了sample/dns_server/main.cpp文件，增加了命令行参数-Q,以便于在压力测试时指定队列数量
+  * 修改了sample/dns_server/main.cpp文件，增加了对xdp_runtime_setup_rss_ipv4的调用，用以设置网卡RSS
+  * 修改了xdp_eth.c和xdp_eth.h文件，实现了设置网卡多队列RSS的设置接口，目前支持ipv4和ipv6的源IP|目标IP|源端口|目标端口作为RSS的hash key
+  * 修改了xdp_runtime.h和xdp_runtime.c,封装了设置网卡多队列RSS的接口，为外层调用
