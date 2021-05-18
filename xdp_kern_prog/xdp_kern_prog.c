@@ -299,7 +299,7 @@ XDP_ACTION_DEFINE(udp_port)
     }
     
     cur->port = h->dest;
-    pdebug("cur->port %u", cur->port);
+    pdebug("dest port %u, src port %u", h->dest, h->source);
     action = bpf_map_lookup_elem(MAP_REF(udp_port), &cur->port);
     if (!action) {
         return XDP_NOSET;
