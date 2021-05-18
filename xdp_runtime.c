@@ -231,6 +231,35 @@ inline int xdp_runtime_setup_numa(struct xdp_runtime *runtime, int numa_node)
     return old;
 }
 
+inline int
+xdp_runtime_setup_rss_ipv4(struct xdp_runtime *runtime, int proto)
+{
+    uint32_t type = 0;
+    switch (proto) {
+        case IPPROTO_UDP:
+            type = XDP_UDP_V4_FLOW;
+            break;
+        case IPPROTO_TCP:
+            type = XDP_TCP_V4_FLOW;
+            break;
+    }
+    return xdp_eth_set_rss(runtime->iface.ifname, type, XDP_RXH_LAYER4);
+}
+
+inline int xdp_runtime_setup_rss_ipv6(struct xdp_runtime *runtime, int proto)
+{
+    uint32_t type = 0;
+    switch (proto) {
+        case IPPROTO_UDP:
+            type = XDP_UDP_V6_FLOW;
+            break;
+        case IPPROTO_TCP:
+            type = XDP_TCP_V6_FLOW;
+            break;
+    }
+    return xdp_eth_set_rss(runtime->iface.ifname, type, XDP_RXH_LAYER4);
+}
+
 inline int xdp_runtime_tcp_packet(uint16_t port)
 {
     return xdp_prog_update_tcpport(port, XDP_PACKET_POLICY_DIRECT);        
@@ -320,3 +349,5 @@ inline int xdp_runtime_ipv6_drop(const char *ip, uint32_t prefix, int type)
 
     return xdp_prog_update_ipv6(&addr, prefix, type, XDP_PACKET_POLICY_DROP);
 }
+
+

@@ -13,6 +13,7 @@ int main(int argc, char *argv[])
     char       *ip = NULL;
     char       *prog = NULL;
     uint16_t    port = 0;
+    uint16_t    queue;
     int         ret;
     int         c = -1;
     int         option_index;
@@ -23,10 +24,11 @@ int main(int argc, char *argv[])
         {"ip", required_argument, NULL, 'i'},
         {"port", required_argument, NULL, 'p'},
         {"prog", required_argument, NULL, 'g'},
+        {"queue", required_argument, NULL, 'Q'},
         {NULL, 0, NULL, 0}
     };
     while (1) {
-        c = getopt_long(argc, argv, "d:i:p:g:", long_options, &option_index);
+        c = getopt_long(argc, argv, "d:i:p:g:Q:", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -42,6 +44,9 @@ int main(int argc, char *argv[])
                 break;
             case 'g':
                 prog = strdup(optarg);
+                break;
+            case 'Q':
+                queue = atoi(optarg);
                 break;
             default:
                 fprintf(stderr, "argument error !\n");
@@ -62,17 +67,17 @@ int main(int argc, char *argv[])
         fprintf(stderr, "xdp_runtime_udp_packet failed with %s\n", eth);
         goto out;
     }
-    /* 
-    ret = xdp_runtime_ipv4_packet(ip, 32, XDP_UPDATE_IP_DST);
-    if (ret < 0) {
-        fprintf(stderr, "xdp_runtime_ipv4_packet failed ip %s\n", ip);
-        goto out;
-    }
-    */ 
-    ret = xdp_runtime_setup_queue(&runtime, 2, 1024);
+    ret = xdp_runtime_setup_queue(&runtime, queue, 1024);
     if (ret < 0) {
         fprintf(stderr, "xdp_runtime_setup_queue failed with %s\n", eth);
         goto out;
+    }
+    if (queue > 1) {
+        ret = xdp_runtime_setup_rss_ipv4(&runtime, IPPROTO_UDP);
+        if (ret < 0) {
+            fprintf(stderr, "xdp_runtime_setup_rss_ipv4 failed with %s\n", eth);
+            goto out;
+        }
     }
     ret = xdp_runtime_setup_workers(&runtime, DnsProcess::worker, 0);
     if (ret < 0) {

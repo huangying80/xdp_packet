@@ -54,6 +54,10 @@ void xdp_runtime_setup_size(struct xdp_runtime *runtime,
     uint32_t fill_size, uint32_t comp_size,
     uint32_t frame_size, uint32_t frame_headroom);
 int xdp_runtime_setup_numa(struct xdp_runtime *runtime, int numa_node);
+int xdp_runtime_setup_rss_ipv4(
+    struct xdp_runtime *runtime, int protocol);
+int xdp_runtime_setup_rss_ipv6(
+    struct xdp_runtime *runtime, int protocol);
 
 int xdp_runtime_tcp_packet(uint16_t port);
 int xdp_runtime_tcp_drop(uint16_t port);
