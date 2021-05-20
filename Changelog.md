@@ -73,3 +73,5 @@ huangying, email: hy_gzr@163.com
   * 修改了sample/dns_server/main.cpp文件，增加了对xdp_runtime_setup_rss_ipv4的调用，用以设置网卡RSS
   * 修改了xdp_eth.c和xdp_eth.h文件，实现了设置网卡多队列RSS的设置接口，目前支持ipv4和ipv6的源IP|目标IP|源端口|目标端口作为RSS的hash key
   * 修改了xdp_runtime.h和xdp_runtime.c,封装了设置网卡多队列RSS的接口，为外层调用
+* 2021-05-20:<br>
+  * 修改该了xdp_worker.h和xdp_worker.c,解决了worker数超过属于同一个numa节点的CPU核数时启动worker失败的问题
