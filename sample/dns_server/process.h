@@ -1,6 +1,9 @@
 #ifndef _PROCESS_H_
 #define _PROCESS_H_
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <string.h>
 #include <linux/if_ether.h>
 #include "xdp_framepool.h"
@@ -24,7 +27,12 @@ private:
     static volatile bool running;
     static struct Channel channelList[MAX_QUEUE];
     static Dns packet;
+    static in_addr_t serverAddr;
 public:
+    static void setServerAddr(const char *ip)
+    {
+        serverAddr = inet_addr(ip);
+    }
     static int worker(volatile void *args);
     static void swapPort(uint16_t &src, uint16_t &dst);
     static void swapIp(uint32_t &src, uint32_t &dst);

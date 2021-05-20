@@ -17,6 +17,7 @@ int main(int argc, char *argv[])
     int         ret;
     int         c = -1;
     int         option_index;
+    in_addr_t   server_addr;
     struct xdp_runtime runtime;
 
     struct option long_options[] = {
@@ -57,6 +58,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "argument error !\n");
         return -1;
     }
+
     ret = xdp_runtime_init(&runtime, eth, prog, NULL);
     if (ret < 0) {
         fprintf(stderr, "xdp_runtime_init failed with %s\n", eth);
@@ -79,6 +81,7 @@ int main(int argc, char *argv[])
             goto out;
         }
     }
+    DnsProcess::setServerAddr(ip);
     ret = xdp_runtime_setup_workers(&runtime, DnsProcess::worker, 0);
     if (ret < 0) {
         fprintf(stderr, "xdp_runtime_setup_workers failed with %s\n", eth);
