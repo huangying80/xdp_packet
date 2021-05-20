@@ -110,13 +110,13 @@ inline unsigned xdp_worker_get_numa_node(unsigned short worker_id)
 short xdp_worker_get_next(short i)
 {
     i++;
-    while (i < XDP_MAX_WORKER) {
+    while (i < xdp_worker_count) {
         if (xdp_workers_set[i]) {
             return i;
         }
         i++;
     }
-    return i;
+    return XDP_MAX_WORKER;
 }
 
 unsigned short xdp_workers_enable(unsigned short count)
@@ -124,7 +124,7 @@ unsigned short xdp_workers_enable(unsigned short count)
     unsigned short i = 0;
     unsigned short n = 0;
 
-    for (i = 0; i < XDP_MAX_WORKER && n < count; i++) {
+    for (i = 0; i < xdp_worker_count && n < count; i++) {
         if (xdp_workers_set[i]) {
             continue;
         }
@@ -139,7 +139,7 @@ unsigned short xdp_workers_enable_by_numa(int numa_node, unsigned short count)
 {
     int            i;
     unsigned short n = 0;
-    for (i = 0; i < XDP_MAX_WORKER && n < count; i++) {
+    for (i = 0; i < xdp_worker_count && n < count; i++) {
         if (xdp_workers_set[i]) {
             continue;
         }
@@ -282,7 +282,8 @@ static void *xdp_worker_loop(__attribute__((unused)) void *arg)
     ret = pthread_setaffinity_np(thread_id, sizeof(cpu_set_t),
         &xdp_workers[worker_id].cpu_set);
     if (ret) {
-        XDP_PANIC("set worker affinity failed, err %d", ret);
+        XDP_PANIC("set worker affinity failed, worker_id %u, err %d",
+            worker_id, ret);
     }
     notify_in = xdp_workers[worker_id].notify_in[0];
     notify_out = xdp_workers[worker_id].notify_out[1]; 

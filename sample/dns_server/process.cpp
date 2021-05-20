@@ -1,6 +1,7 @@
 #include <linux/if_ether.h>
 #include <linux/ip.h>
 #include <linux/udp.h>
+#include <time.h>
 
 #include "xdp_runtime.h"
 #include "xdp_dev.h"
@@ -22,8 +23,10 @@ xdp_runtime_unlikely((l) != ((dl) + sizeof(struct iphdr)) || (ql) < DNS_HEAD_SIZ
 volatile bool DnsProcess::running = true;
 struct Channel DnsProcess::channelList[MAX_QUEUE];
 
+
 Dns DnsProcess::packet;
 static std::string ip = "127.0.0.2";
+in_addr_t DnsProcess::serverAddr = 0;
 int DnsProcess::processIpv4(struct xdp_frame *frame, struct Channel *chn)
 {
     struct ethhdr *ethhdr;
@@ -55,7 +58,10 @@ int DnsProcess::processIpv4(struct xdp_frame *frame, struct Channel *chn)
         xdp_framepool_free_frame(frame);
         return 0;
     }
-        
+    if (serverAddr != iphdr->daddr) {
+        xdp_framepool_free_frame(frame);
+        return 0;
+    }
     dns = (uint8_t *)(udphdr + 1);
     packet.parse((char *)dns);
     packet.setDomainIpGroup(ip);
@@ -114,12 +120,16 @@ int DnsProcess::worker(volatile void *args)
     int          i;
     struct xdp_frame *frame[32];
     struct Channel   *chn;
+    struct timespec   nano = {0, 1000};
 
     qIdx = *(uint16_t *)args;
     chn = &channelList[qIdx];
     
     while (running) {
         rcvd = xdp_dev_read(qIdx, frame, 32);
+        if (xdp_runtime_unlikely(!rcvd)) {
+            nanosleep(&nano, NULL);
+        }
         for (i = 0; i < 3 && i < rcvd; i++) {
             xdp_prefetch0(xdp_frame_get_addr(frame[i], void *));
         }
