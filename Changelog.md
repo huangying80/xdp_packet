@@ -78,3 +78,5 @@ huangying, email: hy_gzr@163.com
 * 2021-05-24:<br>
   * 修改了Makefile,为了压力测试关闭了调试信息开关
   * 增加了文件doc/xdp_packet_performance_report.docx，用来记录测试方法及结果
+  * 修改了sample/dns_server/main.cpp,增加了配置numa节点的命令行参数
+  * 修改了xdp_numa.h,xdp_numa.c和xdp_mempool.c,解决了在创建内存池时设置numa策略失败的问题。
