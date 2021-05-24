@@ -1,5 +1,6 @@
 CC := g++
-DEBUG := -g -DXDP_DEBUG_VERBOSE
+CXXFLAG := -O3
+DEBUG := #-g -DXDP_DEBUG_VERBOSE
 LIB := -lpthread -lz 
 SRC := $(wildcard *.cpp)
 OBJ := $(SRC:%.cpp=%.o)
@@ -17,7 +18,7 @@ $(TARGET): $(OBJ)
 	$(CC) -o $(TARGET) $(OBJ) $(LIB)
 
 $(OBJ): %.o:%.cpp
-	$(CC) -c $< -o $@ $(DEBUG) $(CFLAGS) $(INCLUDE) 
+	$(CC) -c $< -o $@ $(DEBUG) $(CXXFLAG) $(INCLUDE) 
 
 debug:
 	@echo $(SRC)
