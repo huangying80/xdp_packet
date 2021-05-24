@@ -75,3 +75,6 @@ huangying, email: hy_gzr@163.com
   * 修改了xdp_runtime.h和xdp_runtime.c,封装了设置网卡多队列RSS的接口，为外层调用
 * 2021-05-20:<br>
   * 修改该了xdp_worker.h和xdp_worker.c,解决了worker数超过属于同一个numa节点的CPU核数时启动worker失败的问题
+* 2021-05-24:<br>
+  * 修改了Makefile,为了压力测试关闭了调试信息开关
+  * 增加了文件doc/xdp_packet_performance_report.docx，用来记录测试方法及结果
