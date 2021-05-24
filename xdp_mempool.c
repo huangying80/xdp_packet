@@ -18,7 +18,7 @@ struct xdp_mempool* xdp_mempool_create(int numa_node, size_t size)
 {
     struct xdp_mempool_ops   *ops = NULL;
     struct xdp_mempool       *pool = NULL;
-    struct bitmask            oldmask;
+    struct bitmask           *oldmask = NULL;
 
     int    oldpolicy;
     int    ret = 0;
@@ -44,7 +44,7 @@ struct xdp_mempool* xdp_mempool_create(int numa_node, size_t size)
     }
 
     if (numa_on) {
-        xdp_numa_restore(oldpolicy, &oldmask);
+        xdp_numa_restore(oldpolicy, oldmask);
     }
     return pool;
 }

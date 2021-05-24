@@ -8,15 +8,15 @@
 
 inline int xdp_numa_check(void)
 {
-    return numa_available() ? 1 : 0;
+    return numa_available() ? 0 : 1;
 }
 
-void xdp_numa_set(int node, int *oldpolicy, struct bitmask *oldmask)
+void xdp_numa_set(int node, int *oldpolicy, struct bitmask **oldmask)
 {
     int ret;
 
-    oldmask = numa_allocate_nodemask();
-    ret = get_mempolicy(oldpolicy, oldmask->maskp, oldmask->size + 1, 0, 0);
+    *oldmask = numa_allocate_nodemask();
+    ret = get_mempolicy(oldpolicy, (*oldmask)->maskp, (*oldmask)->size + 1, 0, 0);
     if (ret < 0) {
         *oldpolicy = MPOL_DEFAULT;
     }
