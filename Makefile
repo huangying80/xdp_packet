@@ -1,15 +1,15 @@
 CLANG := clang
-CLANG_FLAGS := -D__BPF_TRACING__ -Wall -Werror -O2
+CLANG_FLAGS := -D__BPF_TRACING__ -Wall -Werror -Wno-unused-function -O3 #-O2
 LLC := llc
 XDP_PROG_SRC := $(wildcard xdp_kern_prog/*.c)
 XDP_PROG_OBJ := $(XDP_PROG_SRC:%.c=%.ll)
 XDP_PROG_TARGET := $(XDP_PROG_OBJ:%.ll=%.o)
-XDP_PROG_DEBUG := -DKERN_DEBUG -g
+XDP_PROG_DEBUG := #-DKERN_DEBUG -g
 
 CC := gcc
 AR := ar
-CFLAGS += -Wall -Werror -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -O #-O2
-DEBUG := -DXDP_DEBUG_VERBOSE -DXDP_ERROR_VERBOSE -g
+CFLAGS +=  -Wall -Werror -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -O3#-O2 -O
+DEBUG := #-DXDP_DEBUG_VERBOSE -DXDP_ERROR_VERBOSE -g
 LIB := -lpthread
 
 XDP_PACKET_SRC := $(wildcard *.c)
