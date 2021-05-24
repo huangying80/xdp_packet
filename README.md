@@ -17,7 +17,7 @@ huangying, email: hy_gzr@163.com
   * ~~单核单网卡队列收发包功能调试~~
   * ~~大页内存功能调试~~
   * ~~调试在多核多网卡队列下的收发包处理~~
-  * ~~~单核单网卡队列下的测试程序sample/dns_server的压力测试~~~
+  * ~~单核单网卡队列下的测试程序sample/dns_server的压力测试~~
   * 单核单网卡队列下且设置numa节点的测试程序sample/dns_server的压力测试
   * 多核多网卡队列下的测试程序sample/dns_server的压力测试
   * 多核多网卡队列下且设置numa节点的测试程序sample/dns_server的压力测试
