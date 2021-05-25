@@ -81,3 +81,5 @@ huangying, email: hy_gzr@163.com
   * 修改了sample/dns_server/main.cpp,增加了配置numa节点的命令行参数
   * 修改了xdp_numa.h,xdp_numa.c和xdp_mempool.c,解决了在创建内存池时设置numa策略失败的问题。
   * 修改了doc/xdp_packet_performance_report.docx,重新测试了单核单网卡队列，相同numa节点的压力测试。
+  * 修改了xdp_worker.h及xdp_worker.c,增加了获取当前线程worker_id的接口
+  * 修改了sample/dns_server/process.cpp和sample/dns_server/process.h文件，修复了多线程时因为packet实例造成的段错误
