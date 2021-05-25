@@ -26,7 +26,7 @@ class DnsProcess {
 private:
     static volatile bool running;
     static struct Channel channelList[MAX_QUEUE];
-    static Dns packet;
+    static Dns packet[XDP_MAX_WORKER];
     static in_addr_t serverAddr;
 public:
     static void setServerAddr(const char *ip)

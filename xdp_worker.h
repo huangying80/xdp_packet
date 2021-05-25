@@ -14,6 +14,8 @@ for (i = xdp_worker_get_next(-1); i < XDP_MAX_WORKER; i = xdp_worker_get_next(i)
 #define XDP_WORKER_FOREACH_ALL(i) \
 for (i = 0; i < XDP_MAX_WORKER; i++)
 
+extern __thread unsigned short xdp_worker_id;
+
 typedef int (*xdp_worker_func_t) (volatile void *);
 void xdp_workers_init(void);
 void xdp_workers_stop(void);

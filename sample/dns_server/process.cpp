@@ -24,7 +24,7 @@ volatile bool DnsProcess::running = true;
 struct Channel DnsProcess::channelList[MAX_QUEUE];
 
 
-Dns DnsProcess::packet;
+Dns DnsProcess::packet[XDP_MAX_WORKER];
 static std::string ip = "127.0.0.2";
 in_addr_t DnsProcess::serverAddr = 0;
 int DnsProcess::processIpv4(struct xdp_frame *frame, struct Channel *chn)
@@ -63,9 +63,9 @@ int DnsProcess::processIpv4(struct xdp_frame *frame, struct Channel *chn)
         return 0;
     }
     dns = (uint8_t *)(udphdr + 1);
-    packet.parse((char *)dns);
-    packet.setDomainIpGroup(ip);
-    packetLen = packet.pack((char *)dns);
+    packet[XDP_RUNTIME_WORKER_ID].parse((char *)dns);
+    packet[XDP_RUNTIME_WORKER_ID].setDomainIpGroup(ip);
+    packetLen = packet[XDP_RUNTIME_WORKER_ID].pack((char *)dns);
 
     swapPort(udphdr->source, udphdr->dest);
     udphdr->len = xdp_htons(sizeof(struct udphdr) + packetLen);
@@ -84,7 +84,7 @@ int DnsProcess::processIpv4(struct xdp_frame *frame, struct Channel *chn)
     frame->data_len = l3PayloadLen + sizeof(struct ethhdr);
 
     chn->send_bufs[chn->sendCount++] = frame;
-    packet.reset();
+    packet[XDP_RUNTIME_WORKER_ID].reset();
     return 0;
 }
 

@@ -37,6 +37,7 @@ struct xdp_runtime {
     xdp_worker_func_t   worker_func;
 };
 
+#define XDP_RUNTIME_WORKER_ID xdp_worker_id
 int xdp_runtime_init(struct xdp_runtime *runtime,
     const char *ifname,
     const char *prog,
@@ -58,7 +59,6 @@ int xdp_runtime_setup_rss_ipv4(
     struct xdp_runtime *runtime, int protocol);
 int xdp_runtime_setup_rss_ipv6(
     struct xdp_runtime *runtime, int protocol);
-
 int xdp_runtime_tcp_packet(uint16_t port);
 int xdp_runtime_tcp_drop(uint16_t port);
 

@@ -47,6 +47,7 @@ struct xdp_worker_config {
     int                         notify_in[2];
 } xdp_workers[XDP_MAX_WORKER];
 
+__thread unsigned short xdp_worker_id = XDP_MAX_WORKER;
 static uint8_t xdp_workers_set[XDP_MAX_WORKER];
 
 static unsigned short xdp_worker_count = 0;
@@ -278,7 +279,7 @@ static void *xdp_worker_loop(__attribute__((unused)) void *arg)
     if (worker_id == XDP_MAX_WORKER) {
         XDP_PANIC("can not get worker id");
     }
-
+    xdp_worker_id = worker_id;
     ret = pthread_setaffinity_np(thread_id, sizeof(cpu_set_t),
         &xdp_workers[worker_id].cpu_set);
     if (ret) {
@@ -395,3 +396,4 @@ static unsigned xdp_cpu_numa_node_id(unsigned short core_id)
     }
     return 0;
 }
+
