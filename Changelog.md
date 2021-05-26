@@ -83,3 +83,8 @@ huangying, email: hy_gzr@163.com
   * 修改了doc/xdp_packet_performance_report.docx,重新测试了单核单网卡队列，相同numa节点的压力测试。
   * 修改了xdp_worker.h及xdp_worker.c,增加了获取当前线程worker_id的接口
   * 修改了sample/dns_server/process.cpp和sample/dns_server/process.h文件，修复了多线程时因为packet实例造成的段错误
+* 2021-05-26
+  * 修改了xdp_frame.h及xdp_frame.c文件，实现了fill_size和complete_size大小可配的功能
+  * 修改了xdp_log.h文件，增加了警告级别的信息输出
+  * 修改了xdp_runtime.c文件，在创建frame pool时增加了complete_size大小的参数
+  * 修改了doc/xdp_packet_performance_report.docx文件，增加了2核2网卡队列的性能测试报告
