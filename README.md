@@ -12,13 +12,13 @@ huangying, email: hy_gzr@163.com
   **已经移动到Changelog.md**<br>
 **目前为初步调试阶段,developing分支为正在调试及开发的分支**<br>
 #### 当前状态：
-  * 单核单网卡队列下的sample/dns_server压力测试完成，可以达到1041110QPS,详细测试报告在doc/xdp_packet_performance_report.docx
+  * 2核2网卡队列下的sample/dns_server压力测试完成，可以达到2001596QPS,详细测试报告在doc/xdp_packet_performance_report.docx
 #### 未来计划：
   * ~~单核单网卡队列收发包功能调试~~
   * ~~大页内存功能调试~~
   * ~~调试在多核多网卡队列下的收发包处理~~
   * ~~单核单网卡队列下的测试程序sample/dns_server的压力测试~~
-  * 单核单网卡队列下且设置numa节点的测试程序sample/dns_server的压力测试
+  * ~~单核单网卡队列下且设置numa节点的测试程序sample/dns_server的压力测试~~
   * 多核多网卡队列下的测试程序sample/dns_server的压力测试
   * 多核多网卡队列下且设置numa节点的测试程序sample/dns_server的压力测试
 #### 当前问题：
