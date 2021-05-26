@@ -162,6 +162,7 @@ int xdp_prog_init(const char *ifname, const char *prog, const char *section)
     memcpy(&xdp_rt.cfg, &cfg, sizeof(struct xdp_prog_conf));
 
     ret = 0;
+
 out:
     if (ret < 0) {
         xdp_prog_release();
@@ -191,6 +192,7 @@ inline int xdp_prog_update_l3(uint16_t l3_proto, uint32_t action)
     __u32 val = (__u32)action;
     return xdp_update_map_percpu(xdp_rt.map_fd[L3_MAP_FD], key, val);
 }
+
 
 inline int
 xdp_prog_update_ipv4(struct in_addr *addr, uint32_t prefix,

@@ -4,7 +4,7 @@ LLC := llc
 XDP_PROG_SRC := $(wildcard xdp_kern_prog/*.c)
 XDP_PROG_OBJ := $(XDP_PROG_SRC:%.c=%.ll)
 XDP_PROG_TARGET := $(XDP_PROG_OBJ:%.ll=%.o)
-XDP_PROG_DEBUG := #-DKERN_DEBUG -g
+#XDP_PROG_DEBUG := -DKERN_DEBUG -g
 
 CC := gcc
 AR := ar

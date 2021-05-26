@@ -54,7 +54,7 @@ xdp_framepool_memory_addr_size(uint32_t len, size_t frame_size,
 
 struct xdp_framepool *
 xdp_framepool_create(struct xdp_mempool *pool, uint32_t len,
-    size_t frame_size, size_t frame_headroom)
+    uint32_t comp_len, size_t frame_size, size_t frame_headroom)
 {
     int      i = 0;
     unsigned int n;
@@ -149,6 +149,7 @@ xdp_framepool_create(struct xdp_mempool *pool, uint32_t len,
     framepool->frame_size = XDP_FRAME_SIZE(frame_size);
     framepool->frame_headroom = XDP_FRAME_HEADROOM(frame_headroom); 
     framepool->count = ring_size;
+    framepool->comp_count = comp_len;
 
     return framepool;
 }

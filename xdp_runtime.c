@@ -11,18 +11,22 @@
 #include "xdp_prog.h"
 #include "xdp_log.h"
 
-
 #ifndef XDP_RUNTIME_FILL_SIZE
 #define XDP_RUNTIME_FILL_SIZE 4096
 #endif
+#define XDP_RUNTIME_FILL_SIZE_ALIGN(s) \
+XDP_ALIGN(s, XSK_RING_CONS__DEFAULT_NUM_DESCS << 1)
 
 #ifndef XDP_RUNTIME_COMP_SIZE
 #define XDP_RUNTIME_COMP_SIZE 2048
 #endif
+#define XDP_RUNTIME_COMP_SIZE_ALIGN(s) \
+XDP_ALIGN(s, XSK_RING_CONS__DEFAULT_NUM_DESCS)
 
 #ifndef XDP_RUNTIME_FRAME_SIZE 
 #define XDP_RUNTIME_FRAME_SIZE 2048
 #endif
+#define XDP_RUNTIME_FRAME_SIZE_ALIGN(s) XDP_ALIGN(s, 2048)
 
 #ifndef XDP_RUNTIME_FRAME_HEADROOM 
 #define XDP_RUNTIME_FRAME_HEADROOM 128
@@ -41,9 +45,9 @@ xdp_runtime_init(struct xdp_runtime *runtime,
 {
     int ret = 0;
    
-    runtime->fill_size = XDP_RUNTIME_FILL_SIZE;
-    runtime->comp_size = XDP_RUNTIME_COMP_SIZE;
-    runtime->frame_size = XDP_RUNTIME_FRAME_SIZE;
+    runtime->fill_size = XDP_RUNTIME_FILL_SIZE_ALIGN(XDP_RUNTIME_FILL_SIZE);
+    runtime->comp_size = XDP_RUNTIME_COMP_SIZE_ALIGN(XDP_RUNTIME_COMP_SIZE);
+    runtime->frame_size = XDP_RUNTIME_FRAME_SIZE_ALIGN(XDP_RUNTIME_FRAME_SIZE);
     runtime->frame_headroom = XDP_RUNTIME_FRAME_HEADROOM;
     runtime->queue_size = XDP_RUNTIME_QUEUE_SIZE;
     runtime->queue_count = 0;
@@ -68,10 +72,10 @@ xdp_runtime_setup_size(struct xdp_runtime *runtime,
     uint32_t frame_size, uint32_t frame_headroom)
 {
     if (fill_size) {
-        runtime->fill_size = XDP_ALIGN(fill_size, 2048);
+        runtime->fill_size = XDP_RUNTIME_FILL_SIZE_ALIGN(fill_size);
     }
     if (comp_size) {
-        runtime->comp_size = XDP_ALIGN(comp_size, 1024);
+        runtime->comp_size = XDP_RUNTIME_COMP_SIZE_ALIGN(comp_size);
     }
     if (frame_size) {
         runtime->frame_size = XDP_ALIGN(frame_size, 8);
@@ -89,6 +93,7 @@ xdp_runtime_setup_queue(struct xdp_runtime *runtime,
     struct xdp_framepool *frame_pool;
     struct xdp_iface     *iface;
     size_t                frame_count;
+    size_t                comp_count;
     size_t                frame_size;
     size_t                frame_headroom;
     size_t                qmem_size;
@@ -107,6 +112,7 @@ xdp_runtime_setup_queue(struct xdp_runtime *runtime,
     qmem_size = xdp_dev_queue_addr_memsize(queue_count);
 
     frame_count = runtime->fill_size;
+    comp_count = runtime->comp_size;
     frame_size = runtime->frame_size;
     frame_headroom = runtime->frame_headroom;
     fp_size = xdp_framepool_memory_addr_size(frame_count, frame_size, frame_headroom);
@@ -127,7 +133,7 @@ xdp_runtime_setup_queue(struct xdp_runtime *runtime,
         goto out;
     }
     for (i = 0; i < queue_count; i++) {
-        frame_pool = xdp_framepool_create(pool, frame_count,
+        frame_pool = xdp_framepool_create(pool, frame_count, comp_count,
             frame_size, frame_headroom);
         if (!frame_pool) {
             ret = -1;
@@ -350,4 +356,7 @@ inline int xdp_runtime_ipv6_drop(const char *ip, uint32_t prefix, int type)
     return xdp_prog_update_ipv6(&addr, prefix, type, XDP_PACKET_POLICY_DROP);
 }
 
-
+inline unsigned short xdp_runtime_get_worker_id(void)
+{
+    return xdp_worker_id;
+}

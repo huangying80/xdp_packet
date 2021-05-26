@@ -111,6 +111,7 @@ xdp_sock_rx_zc(struct xdp_rx_queue *rxq, struct xdp_frame **bufs,
 
     n = xdp_framepool_get_frame(umem->framepool, fq_bufs, frame_n); 
     if (!n) {
+        ERR_OUT("get no frame for receive");
         return -1;
     }
 
@@ -118,6 +119,7 @@ xdp_sock_rx_zc(struct xdp_rx_queue *rxq, struct xdp_frame **bufs,
     if (!rcvd) {
 #if defined(XDP_USE_NEED_WAKEUP)
         if (xsk_ring_prod__needs_wakeup(&umem->fq)) {
+            WARN_OUT("need poll 500ms for no frame received");
             poll(rxq->fds, 1, 500);
         }
 #endif
@@ -157,9 +159,11 @@ xdp_sock_tx_zc(struct xdp_tx_queue *txq, struct xdp_frame **bufs,
     uint64_t    addr;
     uint64_t    offset;
     uint32_t    free_thresh = umem->cq.size >> 1;
+    uint32_t    comp_size = umem->framepool->comp_count;
      
     if (xsk_cons_nb_avail(&umem->cq, free_thresh) >= free_thresh) {
-        xdp_sock_pull_umem_cq(umem, XSK_RING_CONS__DEFAULT_NUM_DESCS);
+        //xdp_sock_pull_umem_cq(umem, XSK_RING_CONS__DEFAULT_NUM_DESCS);
+        xdp_sock_pull_umem_cq(umem, comp_size);
     }
     for (i = 0; i < buf_len; i++) {
         frame = bufs[i];    
@@ -195,6 +199,8 @@ xdp_sock_umem_configure(struct xdp_rx_queue *rxq,
     };
     struct xdp_framepool *fpool = rxq->framepool;
 
+    cfg.fill_size = fpool->count;
+    cfg.comp_size = fpool->comp_count;
     cfg.frame_size = fpool->frame_size;
     cfg.frame_headroom = fpool->frame_headroom;
     
@@ -245,7 +251,9 @@ static void xdp_sock_pull_umem_cq(struct xdp_umem_info *umem, uint32_t size)
 static void xdp_sock_kick_tx(struct xdp_tx_queue *txq)
 {
     struct xdp_umem_info *umem = txq->umem;
-    xdp_sock_pull_umem_cq(umem, XSK_RING_CONS__DEFAULT_NUM_DESCS);
+    uint32_t    comp_size = umem->framepool->comp_count;
+    //xdp_sock_pull_umem_cq(umem, XSK_RING_CONS__DEFAULT_NUM_DESCS);
+    xdp_sock_pull_umem_cq(umem, comp_size);
 
 #if defined(XDP_USE_NEED_WAKEUP)
     if (xsk_ring_prod__needs_wakeup(&txq->tx)) {
@@ -253,10 +261,13 @@ static void xdp_sock_kick_tx(struct xdp_tx_queue *txq)
         while (send(xsk_socket__fd(txq->pair->xsk), NULL,
             0, MSG_DONTWAIT) < 0) {
             if (errno != EBUSY && errno != EAGAIN && errno != EINTR) {
+                WARN_OUT("write xsk_socket failed, %d", errno);
                 break;
             }
             if (errno == EAGAIN) {
-                xdp_sock_pull_umem_cq(umem, XSK_RING_CONS__DEFAULT_NUM_DESCS);
+                WARN_OUT("write xsk_socket again");
+                //xdp_sock_pull_umem_cq(umem, XSK_RING_CONS__DEFAULT_NUM_DESCS);
+                xdp_sock_pull_umem_cq(umem, comp_size);
             }
         }
 #if defined(XDP_USE_NEED_WAKEUP)
