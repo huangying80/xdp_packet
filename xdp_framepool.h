@@ -27,6 +27,7 @@ struct xdp_framepool {
     uint32_t            frame_headroom;
     struct xdp_ring    *ring;
     size_t              count;
+    size_t              comp_count;
     void               *base_addr;
 } XDP_CACHE_ALIGN;
 
@@ -34,7 +35,7 @@ struct xdp_framepool {
 size_t xdp_framepool_memory_addr_size(uint32_t len, size_t frame_size,
     size_t frame_headroom);
 struct xdp_framepool *xdp_framepool_create(struct xdp_mempool *pool,
-    uint32_t len, size_t frame_size, size_t frame_headroom);
+    uint32_t len, uint32_t comp_len, size_t frame_size, size_t frame_headroom);
 unsigned int xdp_framepool_get_frame(struct xdp_framepool *fp,
     struct xdp_frame **frame_list, size_t count);
 unsigned int xdp_framepool_put_frame(struct xdp_framepool *fp,

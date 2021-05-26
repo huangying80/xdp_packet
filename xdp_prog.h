@@ -30,7 +30,6 @@ int xdp_prog_update_ipv4(struct in_addr *addr,
     uint32_t prefix, int type, uint32_t action);
 int xdp_prog_update_ipv6(struct in6_addr *addr,
     uint32_t prefix, int type, uint32_t action);
-
 #ifdef __cplusplus
 } 
 #endif

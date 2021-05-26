@@ -41,10 +41,20 @@ fprintf(stderr, "\n")
     fprintf(stderr, format, ##args);\
     fprintf(stderr, "\n")
 
+#define WARN_OUT(format, args...) \
+    fprintf(stderr, "[%s:%d %s WARN] ", __FILE__, __LINE__, __func__); \
+    fprintf(stderr, format, ##args);\
+    fprintf(stderr, "\n")
+
 #else
 
 #define ERR_OUT(format, args...) \
 fprintf(stderr, "[ERR] ");  \
+fprintf(stderr, format, ##args); \
+fprintf(stderr, "\n")
+
+#define WARN_OUT(format, args...) \
+fprintf(stderr, "[WARN] ");  \
 fprintf(stderr, format, ##args); \
 fprintf(stderr, "\n")
 
