@@ -88,3 +88,5 @@ huangying, email: hy_gzr@163.com
   * 修改了xdp_log.h文件，增加了警告级别的信息输出
   * 修改了xdp_runtime.c文件，在创建frame pool时增加了complete_size大小的参数
   * 修改了doc/xdp_packet_performance_report.docx文件，增加了2核2网卡队列的性能测试报告
+* 2021-05-28
+  * 修改了doc/xdp_packet_performance_report.docx文件，增加了2核2网卡队列的性能测试报告
