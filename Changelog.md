@@ -90,3 +90,5 @@ huangying, email: hy_gzr@163.com
   * 修改了doc/xdp_packet_performance_report.docx文件，增加了2核2网卡队列的性能测试报告
 * 2021-05-28
   * 修改了doc/xdp_packet_performance_report.docx文件，增加了2核2网卡队列的性能测试报告
+* 2021-05-31
+  * 修改了sample/dns_server/process.cpp文件，纠正了在接收数据包之后重复预取的问题，此问题会对性能有少许影响
