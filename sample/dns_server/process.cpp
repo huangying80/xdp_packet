@@ -134,7 +134,7 @@ int DnsProcess::worker(volatile void *args)
             xdp_prefetch0(xdp_frame_get_addr(frame[i], void *));
         }
         for (i = 0; i < rcvd - 3; i++) {
-            xdp_prefetch0(xdp_frame_get_addr(frame[i], void *));
+            xdp_prefetch0(xdp_frame_get_addr(frame[i + 3], void *));
             processIpv4(frame[i], chn);
         }
         for (; i < rcvd; i++) {
