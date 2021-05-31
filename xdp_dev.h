@@ -48,6 +48,8 @@ xdp_dev_umem_info_pool_create(struct xdp_mempool *pool, uint32_t n);
 struct xdp_umem_info *xdp_dev_umem_info_calloc(
     struct xdp_umem_info_pool *umem_pool, size_t n);
 size_t xdp_dev_queue_memsize(size_t queue_count);
+unsigned int xdp_dev_get_empty_frame(uint16_t queue_id,
+    struct xdp_frame **bufs, uint16_t bufs_count);
 #define xdp_dev_umem_info_pool_addr_memsize(n) \
     (xdp_dev_umem_info_pool_memsize(n) + XDP_CACHE_LINE)
 #define xdp_dev_queue_addr_memsize(n) \

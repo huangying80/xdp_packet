@@ -151,6 +151,19 @@ out:
     return ret;
 }
 
+inline unsigned int
+xdp_dev_get_empty_frame(uint16_t queue_id,
+    struct xdp_frame **bufs, uint16_t bufs_count)
+{
+    struct xdp_rx_queue     *rxq;
+    struct xdp_umem_info    *umem;
+
+    rxq = xdp_dev.rx_queue + queue_id; 
+    umem = rxq->umem;
+
+    return xdp_framepool_get_frame(umem->framepool, bufs, bufs_count);
+}
+
 inline int
 xdp_dev_read(uint16_t rxq_id, struct xdp_frame **bufs, uint16_t bufs_count)
 {
