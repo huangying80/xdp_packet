@@ -48,11 +48,6 @@ void SynFlood::initPacket(struct xdp_frame *frame, struct Channel *ch)
     
     int len;
 
-    frame->data_off = sizeof(struct xdp_frame);
-    frame->data_len = sizeof(struct ethhdr)
-        + sizeof(struct iphdr)
-        + sizeof(struct tcphdr);
-
     ethhdr = xdp_frame_get_addr(frame, struct ethhdr *);
     iphdr = (struct iphdr *) (ethhdr + 1);
     tcphdr = (struct tcphdr *) (iphdr + 1);
@@ -81,6 +76,8 @@ void SynFlood::initPacket(struct xdp_frame *frame, struct Channel *ch)
     tcphdr->check = 0;
     tcphdr->urg_ptr = 0;
     tcphdr->check = xdp_ipv4_udptcp_checksum(iphdr, tcphdr);
+
+    frame->data_len = sizeof(struct ethhdr) + len;
     
     ch->send_bufs[ch->sendCount++] = frame;
 }
