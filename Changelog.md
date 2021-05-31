@@ -93,4 +93,4 @@ huangying, email: hy_gzr@163.com
 * 2021-05-31
   * 修改了sample/dns_server/process.cpp文件，纠正了在接收数据包之后重复预取的问题，此问题会对性能有少许影响
   * 修改了xdp_kern_prog/xdp_kern_prog.c文件，计算IP头部大小时使用左移操作代替了乘法操作，以便提升一点点性能
-  * 增加了sample/synflood项目，用以测试发包性能
+  * 增加了sample/synflood示例项目，用以测试发包性能，此示例只用于学习，请勿用于其他非正当用途。
