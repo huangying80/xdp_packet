@@ -121,7 +121,7 @@ XDP_ACTION_DEFINE(ipv4)
         return XDP_ABORTED;
     }
 
-    hdrsize = iph->ihl * 4;
+    hdrsize = iph->ihl << 2;
     if(hdrsize < sizeof(struct iphdr)) {
         pdebug("ipv4 xdp aborted");
         return XDP_ABORTED;
