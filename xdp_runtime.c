@@ -360,3 +360,4 @@ inline unsigned short xdp_runtime_get_worker_id(void)
 {
     return xdp_worker_id;
 }
+

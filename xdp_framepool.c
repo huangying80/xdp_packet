@@ -154,7 +154,6 @@ xdp_framepool_create(struct xdp_mempool *pool, uint32_t len,
     framepool->frame_headroom = headroom; 
     framepool->count = ring_size;
     framepool->comp_count = comp_len;
-
     return framepool;
 }
 
@@ -188,7 +187,6 @@ inline void
 xdp_framepool_free_frame(struct xdp_frame *frame)
 {
     struct xdp_ring *ring;
-
     ring = frame->fpool->ring;
     xdp_ring_enqueue_bulk(ring, (void **)&frame, 1, NULL);
 }

@@ -8,6 +8,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <emmintrin.h>
 #include <xmmintrin.h>
 
@@ -31,8 +32,10 @@ enum {
     FINISH
 };
 
+#define  CMD_START 's'
+#define  CMD_STOP  'q'
+
 struct xdp_worker_config {
-    volatile uint64_t           quit;
     volatile int                state;
     volatile pthread_t          thread_id; 
     volatile xdp_worker_func_t  worker_func;
@@ -72,7 +75,6 @@ void xdp_workers_init(void)
             xdp_workers[i].cpu_core_index = -1;    
             continue;
         }
-        xdp_workers[i].quit = 0;
         xdp_workers[i].cpu_core_index = count;
         xdp_workers[i].cpu_core_id = xdp_cpu_core_id(i);
         xdp_workers[i].state = INIT;
@@ -92,15 +94,27 @@ void xdp_workers_init(void)
 void xdp_workers_stop(void)
 {
     unsigned short worker_id;
+    int            notify_out;
+    int            n = 0;
+    char           c = CMD_STOP;
+
     XDP_WORKER_FOREACH(worker_id) {
         xdp_smp_wmb();
-        if (xdp_workers[worker_id].state == FINISH) {
-            xdp_workers[worker_id].quit = 1;
+        while (xdp_workers[worker_id].state != FINISH) {
+            xdp_pause();
         }
-    }
-    XDP_WORKER_FOREACH(worker_id) {
+        xdp_smp_rmb();
+        notify_out = xdp_workers[worker_id].notify_in[1];
+        do {
+            n = write(notify_out, &c, 1);
+        } while (n == 0 || (n < 0 && errno == EINTR));
+        if (n < 0) {
+            XDP_PANIC("cannot send notify, err %d", errno);
+        }
+        DEBUG_OUT("to stop worker %u", worker_id);
         pthread_join(xdp_workers[worker_id].thread_id, NULL);
     }
+
 }
 
 inline unsigned xdp_worker_get_numa_node(unsigned short worker_id)
@@ -203,7 +217,7 @@ int xdp_worker_start_by_id(unsigned short worker_id,
     int notify_out;
     int notify_in;
     int n = 0;
-    char c;
+    char c = CMD_START;
 
     if (xdp_workers[worker_id].state != WAIT) {
         return -1;
@@ -262,7 +276,6 @@ static void *xdp_worker_loop(__attribute__((unused)) void *arg)
     volatile xdp_worker_func_t func;
     volatile void *args;
     unsigned short  worker_id;
-    uint64_t        quit = 0;
     pthread_t       thread_id;
     int             notify_in;
     int             notify_out;
@@ -289,20 +302,23 @@ static void *xdp_worker_loop(__attribute__((unused)) void *arg)
     notify_in = xdp_workers[worker_id].notify_in[0];
     notify_out = xdp_workers[worker_id].notify_out[1]; 
 
-    while (!quit) {
+    while (1) {
         do {
             n = read(notify_in, &c, 1);
         } while (ret < 0 && errno == EINTR);
         if (n <= 0) {
             XDP_PANIC("read notify failed, err %d", errno);
         }
-
+        if (c == CMD_STOP) {
+            break;
+        }
         if (!xdp_workers[worker_id].worker_func) {
             XDP_PANIC("worker function is NULL");
         }
         func = xdp_workers[worker_id].worker_func;
         args = xdp_workers[worker_id].worker_arg;
         xdp_workers[worker_id].state = RUNNING;
+        c = CMD_START;
         n = 0;
         while (n == 0 || (n < 0 && errno == EINTR)) {
             n = write(notify_out, &c, 1);
@@ -312,10 +328,8 @@ static void *xdp_worker_loop(__attribute__((unused)) void *arg)
         }
         ret = func(args);
         xdp_workers[worker_id].worker_ret = ret;
-        xdp_smp_wmb();
-        xdp_workers[worker_id].state = FINISH; 
-        quit = xdp_workers[worker_id].quit;
         xdp_smp_rmb();
+        xdp_workers[worker_id].state = FINISH; 
     }
 
     return NULL;

@@ -13,6 +13,7 @@ int main(int argc, char *argv[])
     char       *eth = NULL;
     char       *ip = NULL;
     char       *prog = NULL;
+    char       *mac = NULL;
     uint16_t    port = 0;
     uint16_t    sender = 0;
     int         ret;
@@ -29,10 +30,11 @@ int main(int argc, char *argv[])
         {"prog", required_argument, NULL, 'g'},
         {"sender", required_argument, NULL, 's'},
         {"count", required_argument, NULL, 'n'},
+        {"mac", required_argument, NULL, 'm'},
         {NULL, 0, NULL, 0}
     };
     while (1) {
-        c = getopt_long(argc, argv, "d:i:p:g:s:n:", long_options, &option_index);
+        c = getopt_long(argc, argv, "d:i:p:g:s:n:m:", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -55,6 +57,10 @@ int main(int argc, char *argv[])
             case 'n':
                 packetCount = atol(optarg);
                 break;
+            case 'm':
+                mac = strdup(optarg);
+                break;
+
             default:
                 fprintf(stderr, "argument error !\n");
                 return -1;
@@ -65,10 +71,19 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+
     SynFlood::setDstAddr(ip, port);
     SynFlood::setPacketCount(packetCount);
     SynFlood::setSignal();
-
+    if (mac && SynFlood::setDstMac(mac) < 0) {
+        fprintf(stderr, "set dst mac failed %s\n", mac);
+        goto out;
+    }
+    //if (SynFlood::setSrcMac("a0:36:9f:6d:07:88")) {
+    if (SynFlood::setSrcMac("00:00:00:00:00:00")) {
+        fprintf(stderr, "set src mac failed %s\n", mac);
+        goto out;
+    }
     ret = xdp_runtime_init(&runtime, eth, prog, NULL);
     if (ret < 0) {
         fprintf(stderr, "xdp_runtime_init failed with %s\n", eth);
