@@ -62,6 +62,7 @@ xdp_framepool_create(struct xdp_mempool *pool, uint32_t len,
     size_t    ring_size;
     size_t    size;
     size_t    framepool_hdr_size;
+    uint32_t  headroom;
     void     *addr;
     struct xdp_frame    **frame_list;
     struct xdp_ring      *ring = NULL;
@@ -84,56 +85,59 @@ xdp_framepool_create(struct xdp_mempool *pool, uint32_t len,
     if (!addr) {
         return NULL;
     }
+
+    headroom = XDP_FRAME_HEADROOM(frame_headroom); 
     per_size = XDP_FRAME_PER_SIZE(frame_size, frame_headroom);
+
     frame_list = malloc(sizeof(struct xdp_frame *) * ring_size);
     switch (ring_size % 8) {
         case 0:
             while (i != ring_size) {
                 frame_list[i] = (struct xdp_frame *)(addr + i * per_size);
                 frame_list[i]->fpool = framepool;
-                frame_list[i]->data_off = XDP_FRAME_HEADROOM(frame_headroom);
+                frame_list[i]->data_off = headroom;
                 frame_list[i]->data_len = 0;
                 i++;
         case 7:
                 frame_list[i] = (struct xdp_frame *)(addr + i * per_size);
                 frame_list[i]->fpool = framepool;
-                frame_list[i]->data_off = XDP_FRAME_HEADROOM(frame_headroom);
+                frame_list[i]->data_off = headroom;
                 frame_list[i]->data_len = 0;
                 i++;
         case 6:
                 frame_list[i] = (struct xdp_frame *)(addr + i * per_size);
                 frame_list[i]->fpool = framepool;
-                frame_list[i]->data_off = XDP_FRAME_HEADROOM(frame_headroom);
+                frame_list[i]->data_off = headroom;
                 frame_list[i]->data_len = 0;
                 i++;
         case 5:
                 frame_list[i] = (struct xdp_frame *)(addr + i * per_size);
                 frame_list[i]->fpool = framepool;
-                frame_list[i]->data_off = XDP_FRAME_HEADROOM(frame_headroom);
+                frame_list[i]->data_off = headroom;
                 frame_list[i]->data_len = 0;
                 i++;
         case 4:
                 frame_list[i] = (struct xdp_frame *)(addr + i * per_size);
                 frame_list[i]->fpool = framepool;
-                frame_list[i]->data_off = XDP_FRAME_HEADROOM(frame_headroom);
+                frame_list[i]->data_off = headroom;
                 frame_list[i]->data_len = 0;
                 i++;
         case 3:
                 frame_list[i] = (struct xdp_frame *)(addr + i * per_size);
                 frame_list[i]->fpool = framepool;
-                frame_list[i]->data_off = XDP_FRAME_HEADROOM(frame_headroom);
+                frame_list[i]->data_off = headroom;
                 frame_list[i]->data_len = 0;
                 i++;
         case 2:
                 frame_list[i] = (struct xdp_frame *)(addr + i * per_size);
                 frame_list[i]->fpool = framepool;
-                frame_list[i]->data_off = XDP_FRAME_HEADROOM(frame_headroom);
+                frame_list[i]->data_off = headroom;
                 frame_list[i]->data_len = 0;
                 i++;
         case 1:
                 frame_list[i] = (struct xdp_frame *)(addr + i * per_size);
                 frame_list[i]->fpool = framepool;
-                frame_list[i]->data_off = XDP_FRAME_HEADROOM(frame_headroom);
+                frame_list[i]->data_off = headroom;
                 frame_list[i]->data_len = 0;
                 i++;
             }
@@ -147,7 +151,7 @@ xdp_framepool_create(struct xdp_mempool *pool, uint32_t len,
     framepool->ring = ring;
     framepool->base_addr = addr;
     framepool->frame_size = XDP_FRAME_SIZE(frame_size);
-    framepool->frame_headroom = XDP_FRAME_HEADROOM(frame_headroom); 
+    framepool->frame_headroom = headroom; 
     framepool->count = ring_size;
     framepool->comp_count = comp_len;
 
