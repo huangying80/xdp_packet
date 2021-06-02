@@ -21,7 +21,7 @@ private:
     static in_addr_t dstIp;
     static uint16_t  dstPort;
     static uint64_t  packetCount;
-    static __thread uint64_t sendCount;
+    static __thread long sendCount;
     static void signalHandler(int sig);
     static uint8_t dstMac[ETH_ALEN];
     static uint8_t srcMac[ETH_ALEN];
@@ -39,7 +39,13 @@ private:
         }
         return -1;
     }
+    static long rate;
+
 public:
+    static void setRate(long r)
+    {
+        rate = r;
+    }
     static int setDstMac(const char *mac);
     static int setSrcMac(const char *mac);
     static void setSignal(void);
@@ -47,5 +53,6 @@ public:
     static void setDstAddr(const char *ip, uint16_t port);    
     static int sender(volatile void *args);
     static void initPacket(struct xdp_frame *frame, struct Channel *ch);
+    static void updatePacket(struct xdp_frame *frame);
 };
 #endif

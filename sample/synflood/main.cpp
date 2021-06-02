@@ -7,6 +7,7 @@
 #include "xdp_log.h"
 
 #include "synflood.h"
+#include "tokenbucket.h"
 
 int main(int argc, char *argv[])
 {
@@ -73,17 +74,13 @@ int main(int argc, char *argv[])
 
 
     SynFlood::setDstAddr(ip, port);
-    SynFlood::setPacketCount(packetCount);
+    SynFlood::setRate(packetCount);
     SynFlood::setSignal();
     if (mac && SynFlood::setDstMac(mac) < 0) {
         fprintf(stderr, "set dst mac failed %s\n", mac);
         goto out;
     }
-    //if (SynFlood::setSrcMac("a0:36:9f:6d:07:88")) {
-    if (SynFlood::setSrcMac("00:00:00:00:00:00")) {
-        fprintf(stderr, "set src mac failed %s\n", mac);
-        goto out;
-    }
+
     ret = xdp_runtime_init(&runtime, eth, prog, NULL);
     if (ret < 0) {
         fprintf(stderr, "xdp_runtime_init failed with %s\n", eth);
@@ -95,13 +92,12 @@ int main(int argc, char *argv[])
         fprintf(stderr, "xdp_runtime_setup_queue failed with %s\n", eth);
         goto out;
     }
-
-    ret = xdp_runtime_setup_workers(&runtime, SynFlood::sender, 0);
+    TokenBucket::start();
+    ret = xdp_runtime_setup_workers(&runtime, SynFlood::sender, sender);
     if (ret < 0) {
         fprintf(stderr, "xdp_runtime_setup_workers failed with %s\n", eth);
         goto out;
     }
-
     ret = xdp_runtime_startup_workers(&runtime);
     if (ret < 0) {
         fprintf(stderr, "xdp_runtime_startup_workers failed with %s\n", eth);
@@ -110,5 +106,6 @@ int main(int argc, char *argv[])
 
 out:
     xdp_runtime_release(&runtime);
+    TokenBucket::stop();
     return 0;
 }
