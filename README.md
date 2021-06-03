@@ -19,7 +19,8 @@ huangying, email: hy_gzr@163.com
 
 #### 修改历史：
   **已经移动到Changelog.md**<br>
-**目前为初步调试阶段,developing分支为正在调试及开发的分支**<br>
+  https://github.com/huangying80/xdp_packet/blob/main/Changelog.md<br>
+
 #### 当前状态：
   * 完善接口说明文档
 #### 未来计划：
