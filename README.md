@@ -8,7 +8,8 @@ huangying, email: hy_gzr@163.com
    * 高性能网络收包框架即网络数据平面开发框架，单CPU核单网卡队列的环境下，包转发性能可达百万PPS。并且在增加CPU核心数及网卡队列数且numa本地访问时，性能满足线性增长。目前可用于DNS服务、负载均衡，三四层路由等应用。
    * 同时支持高性能的丢包处理，单CPU核单网卡队列的环境下，丢包可达9百万pps。目前支持规则，源IP及子网，目标IP及子网，源端口，目标端口，目前可用于防火墙等应用.
    *  支持使用大页内存，以提高性能。
-   *  对内核版本、内核网卡驱动、网卡型号有要求，详细支持情况请参考https://github.com/iovisor/bcc/blob/master/docs/kernel-versions.md#xdp
+   *  对内核版本、内核网卡驱动、网卡型号有要求，详细支持情况请参考<br>
+      https://github.com/iovisor/bcc/blob/master/docs/kernel-versions.md#xdp
 ### 本项目用于交流和学习，请勿用于非正当途径
 
 因为dpdk需要用uio驱动接管网卡，当应用出现问题时，维护起来比较麻烦，可能需要两块网卡，一块用于收发包处理，一个用于远程登陆 但是xdp可以将ebpf程序加载到网卡驱动中执行，而不需要从内核中将网卡接管。利用此特性给维护提供了方便，不需要额外的管理网卡就可以远程登录。 dpdk中虽然也支持af_xdp,但是低版本中存在个别的bug,在一定条件下会触发段错误，在低版本中会存在性能不够的情况（这些问题，dpdk官方已经有补丁） 又因为dpdk强大的功能导致整个源码复杂庞大，不太方便学习，所以决定搞一个简单点的，基于xdp的高性能收发包框架xdp_packet,以便于学习和应用到之后 的工作中，此项目需要了解xdp,ebpf为基础
@@ -23,15 +24,14 @@ https://github.com/huangying80/xdp_packet/blob/main/Note.md<br>
   **已经移动到Changelog.md**<br>
   https://github.com/huangying80/xdp_packet/blob/main/Changelog.md<br>
 
-#### 当前状态：
-  * 完善接口说明文档
-#### 未来计划：
-  * ~~单核单网卡队列收发包功能调试~~
-  * ~~大页内存功能调试~~
-  * ~~调试在多核多网卡队列下的收发包处理~~
-  * ~~单核单网卡队列下的测试程序sample/dns_server的压力测试~~
-  * ~~单核单网卡队列下且设置numa节点的测试程序sample/dns_server的压力测试~~
-  * ~~多核多网卡队列下的测试程序sample/dns_server的压力测试~~
-  * ~~多核多网卡队列下且设置numa节点的测试程序sample/dns_server的压力测试~~
+#### 开发进度：
+  * 完善接口说明文档 `进行中`
+  * 单核单网卡队列收发包功能调试 `已完成`
+  * 大页内存功能调试 `已完成`
+  * 调试在多核多网卡队列下的收发包处理 `已完成`
+  * 单核单网卡队列下的测试程序sample/dns_server的压力测试 `已完成`
+  * 单核单网卡队列下且设置numa节点的测试程序sample/dns_server的压力测试 `已完成`
+  * 多核多网卡队列下的测试程序sample/dns_server的压力测试 `已完成`
+  * 多核多网卡队列下且设置numa节点的测试程序sample/dns_server的压力测试 `已完成`
 
  
