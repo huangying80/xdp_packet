@@ -94,3 +94,12 @@ huangying, email: hy_gzr@163.com
   * 修改了sample/dns_server/process.cpp文件，纠正了在接收数据包之后重复预取的问题，此问题会对性能有少许影响
   * 修改了xdp_kern_prog/xdp_kern_prog.c文件，计算IP头部大小时使用左移操作代替了乘法操作，以便提升一点点性能
   * 增加了sample/synflood示例项目，用以测试发包性能，此示例只用于学习，请勿用于其他非正当用途。
+* 2021-06-03
+  * 修改了sample/sysflood/main.cpp文件，增加了对发包速度限速的支持
+  * 修改了sample/sysflood/synflood.cpp文件<br>
+    1.增加了设置目标mac地址的功能<br>
+    2.从初始化数据包中分离出了随机源地址、源端口、效验和等变换的部分<br>
+    3.增加了对令牌桶的调用，以实现对发包速度的限速<br>
+  * 增加了sample/sysflood/tokenbucket.cpp和tokenbucket.h,实现了令牌桶算法
+  * 修改了xdp_framepool.cpp文件，在创建framepool时，将frame的data_off的初始值从0调整为headroom
+  * 修改了xdp_worker.cpp文件，修复了程序结束时，worker无法退出，资源不能回收的问题
