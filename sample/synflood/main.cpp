@@ -7,12 +7,14 @@
 #include "xdp_log.h"
 
 #include "synflood.h"
+#include "tokenbucket.h"
 
 int main(int argc, char *argv[])
 {
     char       *eth = NULL;
     char       *ip = NULL;
     char       *prog = NULL;
+    char       *mac = NULL;
     uint16_t    port = 0;
     uint16_t    sender = 0;
     int         ret;
@@ -29,10 +31,11 @@ int main(int argc, char *argv[])
         {"prog", required_argument, NULL, 'g'},
         {"sender", required_argument, NULL, 's'},
         {"count", required_argument, NULL, 'n'},
+        {"mac", required_argument, NULL, 'm'},
         {NULL, 0, NULL, 0}
     };
     while (1) {
-        c = getopt_long(argc, argv, "d:i:p:g:s:n:", long_options, &option_index);
+        c = getopt_long(argc, argv, "d:i:p:g:s:n:m:", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -55,6 +58,10 @@ int main(int argc, char *argv[])
             case 'n':
                 packetCount = atol(optarg);
                 break;
+            case 'm':
+                mac = strdup(optarg);
+                break;
+
             default:
                 fprintf(stderr, "argument error !\n");
                 return -1;
@@ -65,9 +72,14 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+
     SynFlood::setDstAddr(ip, port);
-    SynFlood::setPacketCount(packetCount);
+    SynFlood::setRate(packetCount);
     SynFlood::setSignal();
+    if (mac && SynFlood::setDstMac(mac) < 0) {
+        fprintf(stderr, "set dst mac failed %s\n", mac);
+        goto out;
+    }
 
     ret = xdp_runtime_init(&runtime, eth, prog, NULL);
     if (ret < 0) {
@@ -80,13 +92,12 @@ int main(int argc, char *argv[])
         fprintf(stderr, "xdp_runtime_setup_queue failed with %s\n", eth);
         goto out;
     }
-
-    ret = xdp_runtime_setup_workers(&runtime, SynFlood::sender, 0);
+    TokenBucket::start();
+    ret = xdp_runtime_setup_workers(&runtime, SynFlood::sender, sender);
     if (ret < 0) {
         fprintf(stderr, "xdp_runtime_setup_workers failed with %s\n", eth);
         goto out;
     }
-
     ret = xdp_runtime_startup_workers(&runtime);
     if (ret < 0) {
         fprintf(stderr, "xdp_runtime_startup_workers failed with %s\n", eth);
@@ -95,5 +106,6 @@ int main(int argc, char *argv[])
 
 out:
     xdp_runtime_release(&runtime);
+    TokenBucket::stop();
     return 0;
 }
