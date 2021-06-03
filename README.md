@@ -17,6 +17,8 @@ huangying, email: hy_gzr@163.com
 此开源项目利用XDP中的af_xdp实现了网络包绕过了内核协议栈直接到用户空间的处理，且不需要像dpdk那样，需要用uio驱动接管内核的网卡驱动 此项目目前刚刚开始，正处于开发阶段，编译完成，但还没有经过任何调试，所以会存在许多bug.
 
 同时非常感谢dpdk提供的支持和参考以及宝贵的系统经验！
+#### 使用手册：
+https://github.com/huangying80/xdp_packet/blob/main/manual.md
 #### 开发中遇到的一些问题及解决办法：
 https://github.com/huangying80/xdp_packet/blob/main/Note.md<br>
 
