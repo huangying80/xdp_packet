@@ -20,6 +20,7 @@ private:
     static struct Channel channelList[MAX_QUEUE];
     static in_addr_t dstIp;
     static uint16_t  dstPort;
+    static in_addr_t srcIp;
     static uint64_t  packetCount;
     static __thread long sendCount;
     static void signalHandler(int sig);
@@ -51,6 +52,7 @@ public:
     static void setSignal(void);
     static void setPacketCount(uint64_t c);
     static void setDstAddr(const char *ip, uint16_t port);    
+    static void setSrcAddr(const char *ip);
     static int sender(volatile void *args);
     static void initPacket(struct xdp_frame *frame, struct Channel *ch);
     static void updatePacket(struct xdp_frame *frame);

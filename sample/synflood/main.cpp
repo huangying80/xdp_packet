@@ -9,10 +9,28 @@
 #include "synflood.h"
 #include "tokenbucket.h"
 
+#define DEFAULT_PROG_PATH "./xdp_kern_prog.o"
+void usage(void)
+{
+    printf("Usage:\n");
+    printf("synflood -d ethX -D dst_ip -P dst_port -p ebpf_prog -s workers -M target_mac [-r rate] [-S src_ip]\n");
+    printf("-d|--dev      NIC dev [must]\n");
+    printf("-D|--dstip    target ip [must]\n");
+    printf("-P|--port     target port [must]\n");
+    printf("-S|--srcip    source ip, default is random [option]\n");
+    printf("-p|--prog     ebpf prog, default is ./xdp_kern_prog.o [option]\n");
+    printf("-s|--sender   workers used to send [must]\n");
+    printf("-r|--rate     rate-limiting of per sender [option]\n");
+    printf("-M|--mac      target MAC addr or local gateway MAC addr [must]\n");
+    printf("-h|--help     this help\n");
+    exit(0);
+}
+
 int main(int argc, char *argv[])
 {
     char       *eth = NULL;
     char       *ip = NULL;
+    char       *src_ip = NULL;
     char       *prog = NULL;
     char       *mac = NULL;
     uint16_t    port = 0;
@@ -26,16 +44,18 @@ int main(int argc, char *argv[])
 
     struct option long_options[] = {
         {"dev", required_argument, NULL, 'd'},
-        {"ip", required_argument, NULL, 'i'},
-        {"port", required_argument, NULL, 'p'},
-        {"prog", required_argument, NULL, 'g'},
+        {"dstip", required_argument, NULL, 'D'},
+        {"port", required_argument, NULL, 'P'},
+        {"prog", required_argument, NULL, 'p'},
         {"sender", required_argument, NULL, 's'},
-        {"count", required_argument, NULL, 'n'},
-        {"mac", required_argument, NULL, 'm'},
+        {"rate", required_argument, NULL, 'r'},
+        {"mac", required_argument, NULL, 'M'},
+        {"srcip", required_argument, NULL, 'S'},
+        {"help", required_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
     };
     while (1) {
-        c = getopt_long(argc, argv, "d:i:p:g:s:n:m:", long_options, &option_index);
+        c = getopt_long(argc, argv, "d:D:p:P:s:r:M:S:h", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -43,37 +63,43 @@ int main(int argc, char *argv[])
             case 'd':
                 eth = strdup(optarg);               
                 break;
-            case 'i':
+            case 'D':
                 ip = strdup(optarg);
                 break;
-            case 'p':
+            case 'P':
                 port = atoi(optarg);
                 break;
-            case 'g':
+            case 'p':
                 prog = strdup(optarg);
                 break;
             case 's':
                 sender = atoi(optarg);
                 break;
-            case 'n':
+            case 'r':
                 packetCount = atol(optarg);
                 break;
-            case 'm':
+            case 'M':
                 mac = strdup(optarg);
                 break;
-
+            case 'S':
+                src_ip = strdup(optarg);
+                break;
+            case 'h':
             default:
-                fprintf(stderr, "argument error !\n");
-                return -1;
+                usage();
         }
     }
-    if (!eth || !eth[0] || !ip || !ip[0] || !prog || !prog[0] || !port) {
+    if (!eth || !eth[0] || !ip || !ip[0] || !port) {
         fprintf(stderr, "argument error !\n");
+        usage();
         return -1;
     }
 
-
+    if (!prog || !prog[0]) {
+        prog = strdup(DEFAULT_PROG_PATH);
+    }
     SynFlood::setDstAddr(ip, port);
+    SynFlood::setSrcAddr(src_ip);
     SynFlood::setRate(packetCount);
     SynFlood::setSignal();
     if (mac && SynFlood::setDstMac(mac) < 0) {
