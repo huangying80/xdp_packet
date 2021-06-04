@@ -17,6 +17,26 @@ huangying, email: hy_gzr@163.com
 此开源项目利用XDP中的af_xdp实现了网络包绕过了内核协议栈直接到用户空间的处理，且不需要像dpdk那样，需要用uio驱动接管内核的网卡驱动 此项目目前刚刚开始，正处于开发阶段，编译完成，但还没有经过任何调试，所以会存在许多bug.
 
 同时非常感谢dpdk提供的支持和参考以及宝贵的系统经验！
+
+#### 编译:
+* 依赖：至少满足以下版本
+  * centos 7.6.1810
+  * kerne 5.9.1 内核需要开启特定配置选项以支持xdp 请参考https://docs.cilium.io/en/v1.8/bpf/#compiling-the-kernel
+  * gcc/g++ version 8.3.1
+  * LLVM version 9.0.1
+  * clang version 9.0.1
+  * libpthread-2.17.so
+  * elfutils-libelf-devel-0.176-5
+  * numactl-libs-2.0.12-5
+  * libz.so.1.2.7
+* 下载
+  * git clone https://github.com/huangying80/xdp_packet.git
+* 编译：生成静态库libxdppacket.a和ebpf程序xdp_kern_prog/xdp_kern_prog.o
+  * cd xdp_packet
+  * make
+* 示例
+  * https://github.com/huangying80/xdp_packet/tree/main/sample
+  
 #### 使用手册：
 https://github.com/huangying80/xdp_packet/blob/main/manual.md
 #### 开发中遇到的一些问题及解决办法：
