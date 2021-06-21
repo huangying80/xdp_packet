@@ -23,7 +23,12 @@
 #define xdp_smp_rmb() _mm_lfence()
 #define xdp_smp_wmb() _mm_sfence()
 #define xdp_smp_mb()  _mm_mfence()
-#define xdp_pause()   _mm_pause()
+
+#ifdef XDP_HIGH_PAUSE
+#define xdp_pause(n)   _mm_pause()
+#else
+#define xdp_pause(n)   usleep(n)
+#endif
 
 enum {
     INIT = 0,
@@ -101,7 +106,7 @@ void xdp_workers_stop(void)
     XDP_WORKER_FOREACH(worker_id) {
         xdp_smp_wmb();
         while (xdp_workers[worker_id].state != FINISH) {
-            xdp_pause();
+            xdp_pause(100);
         }
         xdp_smp_rmb();
         notify_out = xdp_workers[worker_id].notify_in[1];
@@ -263,7 +268,7 @@ static int xdp_worker_wait_by_id(unsigned short worker_id)
 
     while(xdp_workers[worker_id].state != FINISH &&
         xdp_workers[worker_id].state != WAIT) {
-        xdp_pause();
+        xdp_pause(100);
     }
 
     xdp_smp_rmb();
