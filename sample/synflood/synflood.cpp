@@ -107,7 +107,7 @@ void SynFlood::initPacket(struct xdp_frame *frame, struct Channel *ch)
     len = sizeof(struct iphdr) + sizeof(struct tcphdr);
     iphdr->ihl = sizeof(struct iphdr) >> 2;
     iphdr->version = 4;
-    iphdr->tos = 0;
+    iphdr->tos = IPTOS_LOWDELAY;
     iphdr->tot_len = xdp_htons(len);
     iphdr->id = 1;
     iphdr->frag_off = 0x40;
@@ -118,8 +118,16 @@ void SynFlood::initPacket(struct xdp_frame *frame, struct Channel *ch)
 
     tcphdr->dest = dstPort; 
     tcphdr->ack = 0;
+    tcphdr->res1 = 0;
     tcphdr->doff = sizeof(struct tcphdr) >> 2;
+    tcphdr->fin = 0;
     tcphdr->syn = 1;
+    tcphdr->rst = 0;
+    tcphdr->psh = 0;
+    tcphdr->ack = 0;
+    tcphdr->urg = 0;
+    tcphdr->ece = 0;
+    tcphdr->cwr = 0;
     tcphdr->window = xdp_htons(2048);
     tcphdr->check = 0;
     tcphdr->urg_ptr = 0;
