@@ -173,3 +173,85 @@
     这两个的地址是不同的，留出这段空间是为了方便实现类似ip隧道之类的封装和解封装使用的。</br>
     至于headroom则是用户空间代码中设置的偏移量。
  ------
+ 
+  * 在运行时出现错误信息 ERROR: Can't create umem "Address family not supported by protocol" `已解决`
+      通过分析内核源码中系统调用socket如下：<br>
+      "Address family not supported by protocol" 对应的错误号为-EAFNOSUPPORT</br>
+      调用流程:<br>
+      SYSCALL_DEFINE3(socket, int, family, int, type, int, protocol) -> \_\_sys_socket -> sock_create -> \_\_sock_create</br>
+      涉及文件：</br>
+      net/socket.c </br>
+      ```
+      int __sock_create(struct net *net, int family, int type, int protocol,
+             struct socket **res, int kern)
+     {
+         int err;
+         struct socket *sock;
+         const struct net_proto_family *pf;
+
+    /*
+     *      Check protocol is in range
+     */
+        if (family < 0 || family >= NPROTO)
+            return -EAFNOSUPPORT; // 此处返回-EAFNOSUPPORT
+        if (type < 0 || type >= SOCK_MAX)
+            return -EINVAL;
+
+    /* Compatibility.
+
+       This uglymoron is moved from INET layer to here to avoid
+       deadlock in module load.
+     */
+        if (family == PF_INET && type == SOCK_PACKET) {
+            pr_info_once("%s uses obsolete (PF_INET,SOCK_PACKET)\n",
+                 current->comm);
+       .............
+        rcu_read_lock();
+        pf = rcu_dereference(net_families[family]);
+        err = -EAFNOSUPPORT; //此处如果pf为空返回错误号-EAFNOSUPPORT
+        if (!pf)
+            goto out_release;
+       ..............
+       }
+       ```
+       第一个返回 -EAFNOSUPPORT代码：是判断family的有效性，因为AF_XDP的值是44，NPROTO的值是#define NPROTO AF_MAX同时AF_MAX值是45,所以此处不是出错点。</br>
+       第二处返回 -EAFNOSUPPORT代码：是从net_families中返回对应family的一些操作接口，当操作接口实例为空时则出错。所以需要找到给net_families[family]赋值的地方</br>
+       流程如下：</br>
+       fs_initcall(xsk_init) -> xsk_init -> sock_register
+       涉及文件：</br>
+       net/xdp/xsk.c</br>
+       net/socket.c</br>
+       在sock_register中给net_familities[AF_XDP]赋值，代码如下：</br>
+       ```
+       int sock_register(const struct net_proto_family *ops)
+       {
+            int err;
+
+            if (ops->family >= NPROTO) {
+                pr_crit("protocol %d >= NPROTO(%d)\n", ops->family, NPROTO);
+                return -ENOBUFS;
+            }
+
+            spin_lock(&net_family_lock);
+            if (rcu_dereference_protected(net_families[ops->family],
+                      lockdep_is_held(&net_family_lock)))
+                      err = -EEXIST;
+            else {
+                  rcu_assign_pointer(net_families[ops->family], ops); //此处给net_families[AF_XDP]赋值
+                  err = 0;
+            }
+            spin_unlock(&net_family_lock);
+
+            pr_info("NET: Registered protocol family %d\n", ops->family);
+            return err;
+      }
+      ```
+      同时fs_initcall(xsk_init)的作用是内核中的subsection在初始化时会通过kernel_thread的线程执行，所以理论上只要内核启动后就应该被执行且支持AF_XDP</br>
+      但实际却不支持,通过分析内核Makefile文件发现</br>
+      ```
+      net/xdp/Makefile:2:obj-$(CONFIG_XDP_SOCKETS) += xsk.o xdp_umem.o xsk_queue.o xskmap.o
+      net/xdp/Makefile:3:obj-$(CONFIG_XDP_SOCKETS) += xsk_buff_pool.o
+      ```
+      当CONFIG_XDP_SOCKETS的值为y时才会编译xsk.o,也就是xsk_init才能在链接时加载到内核二进制文件的subsection中待内核启动时执行</br>
+      结论：当出现错误信息ERROR: Can't create umem "Address family not supported by protocol" 则代表需要在编译内核时开启CONFIG_XDP_SOCKETS选项
+ ------
